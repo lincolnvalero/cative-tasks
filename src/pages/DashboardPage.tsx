@@ -2,13 +2,16 @@ import { useApp } from "@/context/AppContext"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
+import { Button } from "@/components/ui/button"
 import { STATUS_CONFIG, PRIORITY_CONFIG } from "@/types/task"
-import type { Status, Priority } from "@/types/task"
-import { CheckCircle2, Clock, AlertTriangle, ListTodo, TrendingUp, Flame } from "lucide-react"
+import type { Status, Priority, Task } from "@/types/task"
+import { CheckCircle2, Clock, AlertTriangle, ListTodo, TrendingUp, Flame, Upload } from "lucide-react"
 import { ProjectIcon } from "@/components/ProjectIcon"
 import { isPast, parseISO, format, isThisWeek } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { cn } from "@/lib/utils"
+import { useState } from "react"
+import { toast } from "sonner"
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip,
   ResponsiveContainer,
@@ -30,7 +33,63 @@ const PRIORITY_COLORS: Record<Priority, string> = {
 }
 
 export function DashboardPage() {
-  const { tasks, projects } = useApp()
+  const { tasks, projects, addTask, addComment, addChecklistItem } = useApp()
+
+  // Detect localStorage data
+  const [localTasks, setLocalTasks] = useState<Task[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('cative-tasks') || '[]')
+    } catch {
+      return []
+    }
+  })
+
+  const [isMigrating, setIsMigrating] = useState(false)
+
+  async function handleMigrateLocal() {
+    if (localTasks.length === 0) return
+
+    setIsMigrating(true)
+    try {
+      for (let i = 0; i < localTasks.length; i++) {
+        const lt = localTasks[i]
+        toast.info(`Importando ${i + 1} de ${localTasks.length}...`)
+
+        const newTask = await addTask({
+          title: lt.title,
+          description: lt.description,
+          status: lt.status,
+          priority: lt.priority,
+          projectId: lt.projectId,
+          dueDate: lt.dueDate,
+          tags: lt.tags,
+          recurring: lt.recurring ?? null,
+          position: i,
+        })
+
+        if (newTask && lt.checklist?.length) {
+          for (const item of lt.checklist) {
+            await addChecklistItem(newTask.id, item.text)
+          }
+        }
+
+        if (newTask && lt.comments?.length) {
+          for (const c of lt.comments) {
+            await addComment(newTask.id, c.text)
+          }
+        }
+      }
+
+      localStorage.removeItem('cative-tasks')
+      setLocalTasks([])
+      toast.success(`${localTasks.length} tarefas importadas com sucesso!`)
+    } catch (error) {
+      console.error('Erro ao importar tarefas:', error)
+      toast.error('Erro ao importar tarefas. Tente novamente.')
+    } finally {
+      setIsMigrating(false)
+    }
+  }
 
   const total = tasks.length
   const done = tasks.filter(t => t.status === "done").length
@@ -69,6 +128,25 @@ export function DashboardPage() {
         <h1 className="text-2xl font-bold">Dashboard</h1>
         <p className="text-muted-foreground text-sm">Visão geral das suas tarefas na agência</p>
       </div>
+
+      {/* Migration Banner */}
+      {localTasks.length > 0 && (
+        <div className="flex items-center justify-between p-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10">
+          <div>
+            <p className="font-medium text-sm">📦 {localTasks.length} tarefas salvas localmente</p>
+            <p className="text-xs text-muted-foreground">Encontramos dados antigos no seu browser. Deseja importar para o banco de dados?</p>
+          </div>
+          <Button
+            onClick={handleMigrateLocal}
+            disabled={isMigrating}
+            size="sm"
+            className="gap-2 ml-4 shrink-0"
+          >
+            <Upload className="size-4" />
+            {isMigrating ? "Importando..." : "Importar agora"}
+          </Button>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
