@@ -11,6 +11,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Ensure Vercel env vars are set
+        run: |
+          TOKEN="${{ secrets.VERCEL_TOKEN }}"
+          PROJECT="${{ secrets.VERCEL_PROJECT_ID }}"
+          TEAM="${{ secrets.VERCEL_ORG_ID }}"
+          # Upsert VITE_SUPABASE_URL
+          curl -s -X POST "https://api.vercel.com/v10/projects/$PROJECT/env?teamId=$TEAM&upsert=true" \
+            -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+            -d "{\"key\":\"VITE_SUPABASE_URL\",\"value\":\"${{ secrets.VITE_SUPABASE_URL }}\",\"type\":\"plain\",\"target\":[\"production\",\"preview\",\"development\"]}" > /dev/null
+          # Upsert VITE_SUPABASE_ANON_KEY
+          curl -s -X POST "https://api.vercel.com/v10/projects/$PROJECT/env?teamId=$TEAM&upsert=true" \
+            -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+            -d "{\"key\":\"VITE_SUPABASE_ANON_KEY\",\"value\":\"${{ secrets.VITE_SUPABASE_ANON_KEY }}\",\"type\":\"plain\",\"target\":[\"production\",\"preview\",\"development\"]}" > /dev/null
+          echo "Env vars ensured ✓"
+
       - name: Trigger Vercel Production Deployment
         run: |
           RESPONSE=$(curl -s -X POST \
