@@ -18,7 +18,7 @@ import { ProjectIcon } from "@/components/ProjectIcon"
 import {
   Pencil, Trash2, Search, Flag, ArrowUpDown,
   CheckCircle2, Circle, Plus, RefreshCw, Bookmark, X, Check,
-  ChevronRight, CheckSquare, GripVertical, CalendarDays, Loader2,
+  GripVertical, CalendarDays, Loader2,
 } from "lucide-react"
 import {
   format, isPast, isToday, parseISO,
@@ -98,7 +98,7 @@ function SortableRow(props: RowProps) {
 }
 
 function TaskRow({
-  task, onOpenTask, selected, onToggleSelect, checklistOpen, onToggleChecklist,
+  task, onOpenTask, selected, onToggleSelect,
   newChecklistText, onChecklistTextChange,
   dragRef, dragStyle, dragHandleProps, isDragging,
 }: RowProps & {
@@ -117,7 +117,6 @@ function TaskRow({
   const overdue = task.dueDate && !isDone && isPast(parseISO(task.dueDate)) && !isToday(parseISO(task.dueDate))
   const dueToday = task.dueDate && !isDone && isToday(parseISO(task.dueDate))
   const checklist = task.checklist ?? []
-  const checklistDone = checklist.filter(i => i.done).length
 
   useEffect(() => {
     if (!saving) setSavingDate(false)
@@ -157,7 +156,7 @@ function TaskRow({
           overdue && "bg-red-500/5",
           selected && "bg-primary/5",
           isDragging && "opacity-50 bg-muted/30",
-          checklistOpen ? "" : "border-b last:border-0"
+          "border-b last:border-0"
         )}
       >
         {/* Drag handle */}
@@ -170,27 +169,68 @@ function TaskRow({
         <td className="px-2 py-3 w-8">
           <input type="checkbox" checked={selected} onChange={onToggleSelect} onClick={e => e.stopPropagation()} className="rounded" />
         </td>
-        {/* Title */}
-        <td className="px-2 py-3 cursor-pointer min-w-0 w-[35%]" onClick={() => onOpenTask(task)}>
-          <div className="flex items-center gap-2 min-w-0">
-            <button
-              onClick={e => { e.stopPropagation(); onToggleChecklist() }}
-              className={cn("shrink-0 text-muted-foreground/40 hover:text-primary transition-colors", checklistOpen && "text-primary")}
-            >
-              <ChevronRight className={cn("size-3.5 transition-transform", checklistOpen && "rotate-90")} />
-            </button>
-            <button onClick={handleToggleDone} className="text-muted-foreground hover:text-primary shrink-0">
+        {/* Title — permite quebra de linha, sem truncate */}
+        <td className="px-2 py-2 cursor-pointer min-w-0" onClick={() => onOpenTask(task)}>
+          <div className="flex items-start gap-2 min-w-0">
+            <button onClick={handleToggleDone} className="mt-0.5 text-muted-foreground hover:text-primary shrink-0">
               {isDone ? <CheckCircle2 className="size-4 text-green-500" /> : <Circle className="size-4" />}
             </button>
-            <span className={cn("font-medium truncate text-sm", isDone && "line-through text-muted-foreground")}>
-              {task.title}
-            </span>
-            {task.recurring && <RefreshCw className="size-3 text-muted-foreground shrink-0" aria-label="Recorrente" />}
-            {checklist.length > 0 && (
-              <span className="text-xs text-muted-foreground flex items-center gap-0.5 shrink-0">
-                <CheckSquare className="size-3" />{checklistDone}/{checklist.length}
-              </span>
-            )}
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className={cn("font-medium text-sm leading-snug", isDone && "line-through text-muted-foreground")}>
+                  {task.title}
+                </span>
+                {task.recurring && <RefreshCw className="size-3 text-muted-foreground shrink-0" aria-label="Recorrente" />}
+              </div>
+              {/* Subtarefas sempre visíveis — itálico, cinza, indentado */}
+              {checklist.length > 0 && (
+                <div className="flex flex-col gap-0.5 mt-1">
+                  {checklist.map(item => (
+                    <button
+                      key={item.id}
+                      onClick={e => { e.stopPropagation(); toggleChecklistItem(task.id, item.id) }}
+                      className="flex items-center gap-1.5 text-left group"
+                    >
+                      <div className={cn("size-3 rounded border flex items-center justify-center shrink-0 transition-colors", item.done ? "bg-primary border-primary" : "border-muted-foreground/30 group-hover:border-primary")}>
+                        {item.done && <Check className="size-2 text-primary-foreground" />}
+                      </div>
+                      <span className={cn("text-xs italic text-gray-500 dark:text-gray-400", item.done && "line-through opacity-60")}>
+                        {item.text}
+                      </span>
+                    </button>
+                  ))}
+                  {/* Add subitem inline */}
+                  <div className="flex items-center gap-1.5 mt-0.5" onClick={e => e.stopPropagation()}>
+                    <Plus className="size-3 text-muted-foreground/40 shrink-0" />
+                    <input
+                      className="text-xs italic text-gray-400 bg-transparent outline-none placeholder:text-muted-foreground/40 w-full"
+                      placeholder="Adicionar subitem…"
+                      value={newChecklistText}
+                      onChange={e => onChecklistTextChange(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === "Enter" && newChecklistText.trim()) addChecklistItemLocal()
+                        if (e.key === "Escape") onChecklistTextChange("")
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+              {/* Add first subitem if no checklist yet — subtle */}
+              {checklist.length === 0 && (
+                <div className="flex items-center gap-1.5 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
+                  <Plus className="size-3 text-muted-foreground/30 shrink-0" />
+                  <input
+                    className="text-xs italic text-gray-400 bg-transparent outline-none placeholder:text-muted-foreground/30 w-full"
+                    placeholder="Adicionar subitem…"
+                    value={newChecklistText}
+                    onChange={e => onChecklistTextChange(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === "Enter" && newChecklistText.trim()) addChecklistItemLocal()
+                    }}
+                  />
+                </div>
+              )}
+            </div>
           </div>
         </td>
         {/* Status — inline select */}
@@ -262,38 +302,6 @@ function TaskRow({
           </div>
         </td>
       </tr>
-      {/* Checklist expand */}
-      {checklistOpen && (
-        <tr className={cn("bg-muted/10", checklistOpen && "border-b")}>
-          <td colSpan={9} className="px-4 py-2 pl-16">
-            <div className="flex flex-col gap-1">
-              {checklist.map(item => (
-                <button key={item.id} onClick={() => toggleChecklistItem(task.id, item.id)} className="flex items-center gap-2 text-left group w-full">
-                  <div className={cn("size-3.5 rounded border flex items-center justify-center shrink-0 transition-colors", item.done ? "bg-primary border-primary" : "border-muted-foreground/40 group-hover:border-primary")}>
-                    {item.done && <Check className="size-2 text-primary-foreground" />}
-                  </div>
-                  <span className={cn("text-xs", item.done && "line-through text-muted-foreground")}>{item.text}</span>
-                </button>
-              ))}
-              {checklist.length === 0 && <p className="text-xs text-muted-foreground">Nenhum subitem ainda.</p>}
-              <div className="flex items-center gap-2 mt-1">
-                <Plus className="size-3 text-muted-foreground shrink-0" />
-                <input
-                  className="text-xs bg-transparent outline-none flex-1 placeholder:text-muted-foreground border-b border-dashed border-muted-foreground/30 focus:border-primary pb-0.5"
-                  placeholder="Adicionar subitem… Enter"
-                  value={newChecklistText}
-                  onChange={e => onChecklistTextChange(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === "Enter" && newChecklistText.trim()) { addChecklistItemLocal(); }
-                    if (e.key === "Escape") onToggleChecklist()
-                  }}
-                  onClick={e => e.stopPropagation()}
-                />
-              </div>
-            </div>
-          </td>
-        </tr>
-      )}
     </>
   )
 }
@@ -555,7 +563,7 @@ export function ListView({ onOpenTask, appliedView }: ListViewProps) {
 
         {/* Table */}
         <div className="rounded-xl border overflow-hidden">
-          <div className="overflow-x-auto">
+          <div>
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={isDefaultSort ? handleDragEnd : undefined}>
               <SortableContext items={filtered.map(t => t.id)} strategy={verticalListSortingStrategy}>
                 <table className="w-full text-sm">
