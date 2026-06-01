@@ -123,7 +123,7 @@ function KanbanCard({ task, onOpenTask }: { task: Task; onOpenTask: (t: Task) =>
   return (
     <div
       className={cn(
-        "bg-card border rounded-xl p-3 flex flex-col gap-2 hover:shadow-md transition-all select-none",
+        "bg-card border rounded-xl p-3 flex flex-col gap-2 hover:shadow-md transition-all select-none w-full overflow-hidden",
         overdue && "border-red-400/60",
         dueToday && "border-yellow-400/60",
         isDone && "opacity-55"
@@ -135,7 +135,7 @@ function KanbanCard({ task, onOpenTask }: { task: Task; onOpenTask: (t: Task) =>
         <button onClick={toggleDone} className="mt-0.5 shrink-0 text-muted-foreground hover:text-primary transition-colors">
           {isDone ? <CheckCircle2 className="size-4 text-green-500" /> : <Circle className="size-4" />}
         </button>
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 overflow-hidden">
           {editingTitle ? (
             <input
               ref={titleInputRef}
@@ -150,7 +150,7 @@ function KanbanCard({ task, onOpenTask }: { task: Task; onOpenTask: (t: Task) =>
             />
           ) : (
             <p
-              className={cn("text-sm font-medium leading-snug break-words cursor-text", isDone && "line-through")}
+              className={cn("text-sm font-medium leading-snug break-words [word-break:break-word] whitespace-normal cursor-text w-full", isDone && "line-through")}
               onClick={startEditTitle}
               title="Clique para editar"
             >
