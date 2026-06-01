@@ -141,6 +141,25 @@ export function useTaskStore() {
           .sort((a, b) => ((a.position as number) ?? 0) - ((b.position as number) ?? 0))
           .map(r => mapTask(r, commentsByTask[r.id as string] ?? [], checklistByTask[r.id as string] ?? [], activityByTask[r.id as string] ?? []))
         setTasks(mappedTasks)
+
+        // Subscribe to realtime changes
+        const taskSubscription = supabase
+          .channel('ct_tasks_changes')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'ct_tasks' }, (payload) => {
+            if (payload.eventType === 'UPDATE') {
+              setTasks(prev => prev.map(t => t.id === payload.new.id ? mapTask(payload.new, commentsByTask[payload.new.id] ?? [], checklistByTask[payload.new.id] ?? [], activityByTask[payload.new.id] ?? []) : t))
+            } else if (payload.eventType === 'INSERT') {
+              const newTask = mapTask(payload.new, [], [], [])
+              setTasks(prev => [newTask, ...prev])
+            } else if (payload.eventType === 'DELETE') {
+              setTasks(prev => prev.filter(t => t.id !== payload.old.id))
+            }
+          })
+          .subscribe()
+
+        return () => {
+          taskSubscription.unsubscribe()
+        }
       } finally {
         setLoading(false)
       }

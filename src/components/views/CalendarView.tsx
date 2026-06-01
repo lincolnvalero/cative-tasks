@@ -3,6 +3,7 @@ import { useApp } from "@/context/AppContext"
 import type { Task } from "@/types/task"
 import { STATUS_CONFIG } from "@/types/task"
 import { Button } from "@/components/ui/button"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import {
   format, startOfMonth, endOfMonth, startOfWeek, endOfWeek,
@@ -91,22 +92,33 @@ export function CalendarView({ onOpenTask }: CalendarViewProps) {
 
                   {/* Tasks — scrollable, all shown */}
                   <div className="flex-1 overflow-y-auto px-1 pb-1 flex flex-col gap-0.5">
-                    {dayTasks.map(task => {
+                    {dayTasks.slice(0, 2).map(task => {
                       const status = STATUS_CONFIG[task.status]
                       return (
-                        <button
-                          key={task.id}
-                          className={cn(
-                            "text-left text-xs px-1.5 py-0.5 rounded w-full transition-opacity hover:opacity-80 leading-snug",
-                            status.bg, status.color
-                          )}
-                          onClick={() => onOpenTask(task)}
-                          title={task.title}
-                        >
-                          {task.title}
-                        </button>
+                        <Tooltip key={task.id}>
+                          <TooltipTrigger asChild>
+                            <button
+                              className={cn(
+                                "text-left text-xs px-1.5 py-0.5 rounded w-full transition-opacity hover:opacity-80 leading-snug truncate",
+                                status.bg, status.color
+                              )}
+                              onClick={() => onOpenTask(task)}
+                            >
+                              {task.title}
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent side="right" className="text-xs">
+                            <div className="font-medium">{task.title}</div>
+                            <div className="text-muted-foreground">{status.label}</div>
+                          </TooltipContent>
+                        </Tooltip>
                       )
                     })}
+                    {dayTasks.length > 2 && (
+                      <div className="text-xs text-muted-foreground px-1 py-0.5">
+                        +{dayTasks.length - 2} mais
+                      </div>
+                    )}
                   </div>
                 </div>
               )
