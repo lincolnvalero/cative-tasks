@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { ProjectIcon, PROJECT_ICONS } from "@/components/ProjectIcon"
 import { Plus, Pencil, Trash2, CheckCircle2, Clock } from "lucide-react"
 import { toast } from "sonner"
@@ -156,12 +157,13 @@ export function ProjectsPage() {
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={v => !v && setDialogOpen(false)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
+        <DialogContent className="max-w-md flex flex-col max-h-[90vh]">
+          <DialogHeader className="shrink-0">
             <DialogTitle>{editingProject ? "Editar projeto" : "Novo projeto"}</DialogTitle>
           </DialogHeader>
 
-          <div className="flex flex-col gap-4">
+          <ScrollArea className="flex-1 overflow-y-auto -mx-6 px-6">
+          <div className="flex flex-col gap-4 pb-2">
             {/* Preview */}
             <div className="flex items-center gap-3 p-3 rounded-lg border">
               <div
@@ -226,8 +228,9 @@ export function ProjectsPage() {
               </div>
             </div>
           </div>
+          </ScrollArea>
 
-          <DialogFooter>
+          <DialogFooter className="shrink-0 pt-2 border-t">
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
             <Button onClick={handleSave} disabled={!form.name.trim()}>
               {editingProject ? "Salvar" : "Criar projeto"}
