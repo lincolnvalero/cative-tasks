@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { TaskDialog } from "@/components/TaskDialog"
 import { ProjectIcon } from "@/components/ProjectIcon"
-import { Plus, CalendarDays, Flag, CheckCircle2, Circle, MessageSquare, CheckSquare, RefreshCw } from "lucide-react"
+import { Plus, CalendarDays, Flag, CheckCircle2, Circle, MessageSquare, CheckSquare, RefreshCw, Check, X as XIcon } from "lucide-react"
 import { format, isPast, isToday, parseISO } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { cn } from "@/lib/utils"
@@ -71,7 +71,10 @@ function InlineAdd({ status, defaultProjectId }: { status: Status; defaultProjec
 
 // ─── Task Card ────────────────────────────────────────────────────────────────
 function KanbanCard({ task, onOpenTask }: { task: Task; onOpenTask: (t: Task) => void }) {
-  const { moveTask, projects } = useApp()
+  const { moveTask, projects, addChecklistItem, toggleChecklistItem } = useApp()
+  const [checklistOpen, setChecklistOpen] = useState(false)
+  const [newItem, setNewItem] = useState("")
+  const newItemRef = useRef<HTMLInputElement>(null)
   const project = projects.find(p => p.id === task.projectId)
   const priority = PRIORITY_CONFIG[task.priority]
   const isDone = task.status === "done"
@@ -142,11 +145,14 @@ function KanbanCard({ task, onOpenTask }: { task: Task; onOpenTask: (t: Task) =>
           </span>
         )}
         <div className="flex items-center gap-2 ml-auto">
-          {checklistTotal > 0 && (
-            <span className="flex items-center gap-1 text-xs text-muted-foreground">
-              <CheckSquare className="size-3" />{checklistDone}/{checklistTotal}
-            </span>
-          )}
+          <button
+            onClick={e => { e.stopPropagation(); setChecklistOpen(v => !v); setTimeout(() => newItemRef.current?.focus(), 50) }}
+            className={cn("flex items-center gap-1 text-xs transition-colors", checklistTotal > 0 ? "text-muted-foreground hover:text-primary" : "text-muted-foreground/40 hover:text-primary")}
+            title="Subitens"
+          >
+            <CheckSquare className="size-3" />
+            {checklistTotal > 0 ? `${checklistDone}/${checklistTotal}` : "+"}
+          </button>
           {commentCount > 0 && (
             <span className="flex items-center gap-1 text-xs text-muted-foreground">
               <MessageSquare className="size-3" />{commentCount}
@@ -154,6 +160,35 @@ function KanbanCard({ task, onOpenTask }: { task: Task; onOpenTask: (t: Task) =>
           )}
         </div>
       </div>
+
+      {checklistOpen && (
+        <div className="flex flex-col gap-1 pt-2 border-t" onClick={e => e.stopPropagation()}>
+          {(task.checklist ?? []).map(item => (
+            <button key={item.id} onClick={() => toggleChecklistItem(task.id, item.id)} className="flex items-center gap-2 w-full text-left group">
+              <div className={cn("size-3.5 rounded border flex items-center justify-center shrink-0 transition-colors", item.done ? "bg-primary border-primary" : "border-muted-foreground/40 group-hover:border-primary")}>
+                {item.done && <Check className="size-2 text-primary-foreground" />}
+              </div>
+              <span className={cn("text-xs flex-1 text-left", item.done && "line-through text-muted-foreground")}>{item.text}</span>
+            </button>
+          ))}
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <input
+              ref={newItemRef}
+              className="flex-1 text-xs bg-muted/40 rounded px-2 py-1 outline-none placeholder:text-muted-foreground"
+              placeholder="Novo subitem… Enter"
+              value={newItem}
+              onChange={e => setNewItem(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === "Enter" && newItem.trim()) { addChecklistItem(task.id, newItem.trim()); setNewItem("") }
+                if (e.key === "Escape") setChecklistOpen(false)
+              }}
+            />
+            <button onClick={() => setChecklistOpen(false)} className="text-muted-foreground hover:text-foreground">
+              <XIcon className="size-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

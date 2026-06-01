@@ -10,7 +10,8 @@ import { TaskDialog } from "@/components/TaskDialog"
 import { ProjectIcon } from "@/components/ProjectIcon"
 import {
   Pencil, Trash2, Search, CalendarDays, Flag, ArrowUpDown,
-  CheckCircle2, Circle, Plus, RefreshCw, Bookmark, X,
+  CheckCircle2, Circle, Plus, RefreshCw, Bookmark, X, Check,
+  ChevronRight, CheckSquare,
 } from "lucide-react"
 import { format, isPast, isToday, parseISO } from "date-fns"
 import { ptBR } from "date-fns/locale"
@@ -133,8 +134,14 @@ function BulkBar({ selected, onClear, onDelete, onChangeStatus, onChangePriority
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export function ListView({ onOpenTask, appliedView }: ListViewProps) {
-  const { tasks, projects, deleteTask, deleteTasks, updateTasks, moveTask, activeProjectId, addSavedView } = useApp()
+  const { tasks, projects, deleteTask, deleteTasks, updateTasks, moveTask, activeProjectId, addSavedView, addChecklistItem, toggleChecklistItem } = useApp()
   const [newOpen, setNewOpen] = useState(false)
+  const [expandedChecklist, setExpandedChecklist] = useState<Record<string, boolean>>({})
+  const [newChecklistItems, setNewChecklistItems] = useState<Record<string, string>>({})
+
+  function toggleChecklist(id: string) {
+    setExpandedChecklist(prev => ({ ...prev, [id]: !prev[id] }))
+  }
   const [search, setSearch] = useState(appliedView?.filters.search ?? "")
   const [filterStatus, setFilterStatus] = useState<string>(appliedView?.filters.status ?? "all")
   const [filterPriority, setFilterPriority] = useState<string>(appliedView?.filters.priority ?? "all")
@@ -292,13 +299,26 @@ export function ListView({ onOpenTask, appliedView }: ListViewProps) {
                   const overdue = task.dueDate && !isDone && isPast(parseISO(task.dueDate)) && !isToday(parseISO(task.dueDate))
                   const dueToday = task.dueDate && !isDone && isToday(parseISO(task.dueDate))
                   const isChecked = selected.includes(task.id)
+                  const checklistOpen = !!expandedChecklist[task.id]
+                  const checklist = task.checklist ?? []
+                  const checklistDone = checklist.filter(i => i.done).length
+                  const newChecklistText = newChecklistItems[task.id] ?? ""
                   return (
-                    <tr key={task.id} className={cn("border-b last:border-0 hover:bg-muted/20 transition-colors", overdue && "bg-red-500/5", isChecked && "bg-primary/5")}>
+                    <>
+                    <tr key={task.id} className={cn("hover:bg-muted/20 transition-colors", overdue && "bg-red-500/5", isChecked && "bg-primary/5", checklistOpen ? "" : "border-b last:border-0")}>
                       <td className="px-4 py-3">
                         <input type="checkbox" checked={isChecked} onChange={() => toggleSelect(task.id)} onClick={e => e.stopPropagation()} className="rounded" />
                       </td>
                       <td className="px-2 py-3 cursor-pointer" onClick={() => onOpenTask(task)}>
                         <div className="flex items-center gap-2">
+                          {/* Expand checklist toggle */}
+                          <button
+                            onClick={e => { e.stopPropagation(); toggleChecklist(task.id) }}
+                            className={cn("shrink-0 text-muted-foreground/40 hover:text-primary transition-colors", checklistOpen && "text-primary")}
+                            title="Subitens"
+                          >
+                            <ChevronRight className={cn("size-3.5 transition-transform", checklistOpen && "rotate-90")} />
+                          </button>
                           <button onClick={e => { e.stopPropagation(); handleToggleDone(task) }} className="text-muted-foreground hover:text-primary shrink-0">
                             {isDone ? <CheckCircle2 className="size-4 text-green-500" /> : <Circle className="size-4" />}
                           </button>
@@ -306,9 +326,14 @@ export function ListView({ onOpenTask, appliedView }: ListViewProps) {
                             {task.title}
                           </span>
                           {task.recurring && <RefreshCw className="size-3 text-muted-foreground shrink-0" aria-label="Recorrente" />}
+                          {checklist.length > 0 && (
+                            <span className="text-xs text-muted-foreground flex items-center gap-0.5 shrink-0">
+                              <CheckSquare className="size-3" />{checklistDone}/{checklist.length}
+                            </span>
+                          )}
                         </div>
                         {task.tags.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-1 ml-6">
+                          <div className="flex flex-wrap gap-1 mt-1 ml-10">
                             {task.tags.slice(0, 2).map(tag => (
                               <Badge key={tag} variant="secondary" className="text-xs py-0 px-1.5">{tag}</Badge>
                             ))}
@@ -354,6 +379,48 @@ export function ListView({ onOpenTask, appliedView }: ListViewProps) {
                         </div>
                       </td>
                     </tr>
+                    {/* Checklist inline expandível */}
+                    {checklistOpen && (
+                      <tr key={`${task.id}-checklist`} className="border-b bg-muted/10">
+                        <td colSpan={7} className="px-4 py-2 pl-14">
+                          <div className="flex flex-col gap-1">
+                            {checklist.map(item => (
+                              <button
+                                key={item.id}
+                                onClick={() => toggleChecklistItem(task.id, item.id)}
+                                className="flex items-center gap-2 text-left group w-full"
+                              >
+                                <div className={cn("size-3.5 rounded border flex items-center justify-center shrink-0 transition-colors", item.done ? "bg-primary border-primary" : "border-muted-foreground/40 group-hover:border-primary")}>
+                                  {item.done && <Check className="size-2 text-primary-foreground" />}
+                                </div>
+                                <span className={cn("text-xs", item.done && "line-through text-muted-foreground")}>{item.text}</span>
+                              </button>
+                            ))}
+                            {checklist.length === 0 && (
+                              <p className="text-xs text-muted-foreground">Nenhum subitem ainda.</p>
+                            )}
+                            <div className="flex items-center gap-2 mt-1">
+                              <Plus className="size-3 text-muted-foreground shrink-0" />
+                              <input
+                                className="text-xs bg-transparent outline-none flex-1 placeholder:text-muted-foreground border-b border-dashed border-muted-foreground/30 focus:border-primary pb-0.5"
+                                placeholder="Adicionar subitem… Enter"
+                                value={newChecklistText}
+                                onChange={e => setNewChecklistItems(prev => ({ ...prev, [task.id]: e.target.value }))}
+                                onKeyDown={e => {
+                                  if (e.key === "Enter" && newChecklistText.trim()) {
+                                    addChecklistItem(task.id, newChecklistText.trim())
+                                    setNewChecklistItems(prev => ({ ...prev, [task.id]: "" }))
+                                  }
+                                  if (e.key === "Escape") toggleChecklist(task.id)
+                                }}
+                                onClick={e => e.stopPropagation()}
+                              />
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    </>
                   )
                 })}
                 <InlineAddRow activeProjectId={activeProjectId} defaultProjectId={projects[0]?.id ?? ""} />

@@ -162,33 +162,39 @@ function TaskDetailContent({ task, onClose }: { task: Task; onClose: () => void 
             placeholder="Título da tarefa"
           />
 
-          {/* Properties */}
-          <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-            <PropertyRow label="Status">
+          {/* Properties — vertical list, sem truncamento */}
+          <div className="rounded-lg border divide-y text-sm">
+            <PropRow label="Status">
               <Select value={task.status} onValueChange={v => handleStatusChange(v as Status)}>
-                <SelectTrigger className="h-7 text-xs border-dashed"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-8 text-xs border-0 shadow-none bg-transparent focus:ring-0 w-full justify-start gap-2">
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   {(Object.entries(STATUS_CONFIG) as [Status, typeof STATUS_CONFIG[Status]][]).map(([k, v]) => (
                     <SelectItem key={k} value={k} className="text-xs">{v.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-            </PropertyRow>
+            </PropRow>
 
-            <PropertyRow label="Prioridade">
+            <PropRow label="Prioridade">
               <Select value={task.priority} onValueChange={v => handlePriorityChange(v as Priority)}>
-                <SelectTrigger className="h-7 text-xs border-dashed"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-8 text-xs border-0 shadow-none bg-transparent focus:ring-0 w-full justify-start gap-2">
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   {(Object.entries(PRIORITY_CONFIG) as [Priority, typeof PRIORITY_CONFIG[Priority]][]).map(([k, v]) => (
                     <SelectItem key={k} value={k} className="text-xs">{v.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-            </PropertyRow>
+            </PropRow>
 
-            <PropertyRow label="Projeto">
+            <PropRow label="Projeto">
               <Select value={task.projectId} onValueChange={handleProjectChange}>
-                <SelectTrigger className="h-7 text-xs border-dashed"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-8 text-xs border-0 shadow-none bg-transparent focus:ring-0 w-full justify-start gap-2">
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   {projects.map(p => (
                     <SelectItem key={p.id} value={p.id} className="text-xs">
@@ -200,20 +206,22 @@ function TaskDetailContent({ task, onClose }: { task: Task; onClose: () => void 
                   ))}
                 </SelectContent>
               </Select>
-            </PropertyRow>
+            </PropRow>
 
-            <PropertyRow label="Entrega">
+            <PropRow label="Entrega">
               <input
                 type="date"
-                className="h-7 text-xs border border-dashed rounded-md px-2 bg-transparent w-full"
+                className="h-8 text-xs bg-transparent outline-none w-full px-1"
                 value={task.dueDate ?? ""}
                 onChange={e => handleDueDateChange(e.target.value)}
               />
-            </PropertyRow>
+            </PropRow>
 
-            <PropertyRow label="Recorrência">
+            <PropRow label="Recorrência">
               <Select value={task.recurring ?? "none"} onValueChange={handleRecurringChange}>
-                <SelectTrigger className="h-7 text-xs border-dashed"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-8 text-xs border-0 shadow-none bg-transparent focus:ring-0 w-full justify-start gap-2">
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none" className="text-xs">Não recorrente</SelectItem>
                   {(Object.entries(RECURRING_CONFIG) as [NonNullable<Recurring>, string][]).map(([k, v]) => (
@@ -223,7 +231,7 @@ function TaskDetailContent({ task, onClose }: { task: Task; onClose: () => void 
                   ))}
                 </SelectContent>
               </Select>
-            </PropertyRow>
+            </PropRow>
           </div>
 
           {task.tags.length > 0 && (
@@ -374,11 +382,12 @@ function TaskDetailContent({ task, onClose }: { task: Task; onClose: () => void 
   )
 }
 
-function PropertyRow({ label, children }: { label: string; children: React.ReactNode }) {
+// Layout limpo: label fixo à esquerda, valor ocupa o restante sem truncar
+function PropRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-xs text-muted-foreground w-20 shrink-0">{label}</span>
-      <div className="flex-1">{children}</div>
+    <div className="flex items-center min-h-[36px] px-3">
+      <span className="text-xs text-muted-foreground w-24 shrink-0 font-medium">{label}</span>
+      <div className="flex-1 min-w-0">{children}</div>
     </div>
   )
 }
