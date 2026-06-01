@@ -10,7 +10,7 @@ interface AppContextValue {
   saving: boolean
   activeProjectId: string | null
   setActiveProjectId: (id: string | null) => void
-  addTask: (task: Omit<Task, "id" | "createdAt" | "comments" | "checklist" | "activity">) => Promise<Task | undefined>
+  addTask: (task: Omit<Task, "id" | "createdAt" | "comments" | "checklist" | "activity" | "links">) => Promise<Task | undefined>
   reorderTasks: (orderedIds: string[]) => Promise<void>
   updateTask: (id: string, patch: Partial<Task>, activityText?: string) => void
   deleteTask: (id: string) => void
@@ -27,6 +27,9 @@ interface AppContextValue {
   deleteProject: (id: string) => void
   addSavedView: (view: Omit<SavedView, "id">) => void
   deleteSavedView: (id: string) => void
+  addTaskLink: (taskId: string, title: string, url: string) => void
+  deleteTaskLink: (taskId: string, linkId: string) => void
+  duplicateTask: (id: string) => Promise<Task | undefined>
 }
 
 const AppContext = createContext<AppContextValue | null>(null)

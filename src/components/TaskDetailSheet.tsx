@@ -17,7 +17,7 @@ import { toast } from "sonner"
 import { showConfirm } from "@/components/ConfirmDialog"
 import {
   Trash2, Flag, CheckSquare, MessageSquare,
-  Activity, Plus, X, Send, Check, RefreshCw,
+  Activity, Plus, X, Send, Check, RefreshCw, Copy, Link2,
 } from "lucide-react"
 import { parseISO, formatDistanceToNow } from "date-fns"
 import { ptBR } from "date-fns/locale"
@@ -45,13 +45,16 @@ function TaskDetailContent({ task, onClose }: { task: Task; onClose: () => void 
     projects, updateTask, deleteTask, moveTask,
     addComment, deleteComment,
     addChecklistItem, toggleChecklistItem, deleteChecklistItem,
+    addTaskLink, deleteTaskLink, duplicateTask,
   } = useApp()
 
   const [title, setTitle] = useState(task.title)
   const [description, setDescription] = useState(task.description)
   const [commentText, setCommentText] = useState("")
   const [newChecklistText, setNewChecklistText] = useState("")
-  const [tab, setTab] = useState<"checklist" | "comments" | "activity">("comments")
+  const [tab, setTab] = useState<"checklist" | "comments" | "activity" | "links">("comments")
+  const [newLinkTitle, setNewLinkTitle] = useState("")
+  const [newLinkUrl, setNewLinkUrl] = useState("")
   const commentInputRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
@@ -129,6 +132,20 @@ function TaskDetailContent({ task, onClose }: { task: Task; onClose: () => void 
     }
   }
 
+  async function handleDuplicate() {
+    await duplicateTask(task.id)
+    toast.success("Tarefa duplicada!")
+  }
+
+  function handleAddLink() {
+    const tl = newLinkTitle.trim()
+    const ur = newLinkUrl.trim()
+    if (!tl || !ur) return
+    addTaskLink(task.id, tl, ur)
+    setNewLinkTitle("")
+    setNewLinkUrl("")
+  }
+
   const statusCfg = STATUS_CONFIG[task.status]
   const priorityCfg = PRIORITY_CONFIG[task.priority]
 
@@ -149,6 +166,14 @@ function TaskDetailContent({ task, onClose }: { task: Task; onClose: () => void 
             <RefreshCw className="size-3" />{RECURRING_CONFIG[task.recurring]}
           </Badge>
         )}
+      </div>
+
+      {/* Action buttons */}
+      <div className="flex items-center gap-1 px-5 py-2 border-b shrink-0">
+        <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={handleDuplicate} title="Duplicar tarefa">
+          <Copy className="size-3.5" />
+          <span className="hidden sm:inline">Copiar</span>
+        </Button>
       </div>
 
       <ScrollArea className="flex-1">
@@ -239,6 +264,20 @@ function TaskDetailContent({ task, onClose }: { task: Task; onClose: () => void 
                 </SelectContent>
               </Select>
             </PropRow>
+
+            <PropRow label="Responsável">
+              <Select value={task.assignee ?? "none"} onValueChange={v => updateTask(task.id, { assignee: v === "none" ? null : v }, `Responsável: ${v === "none" ? "Ninguém" : v}`)}>
+                <SelectTrigger className="h-8 text-xs border-0 shadow-none bg-transparent focus:ring-0 w-full justify-start gap-2">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none" className="text-xs">Ninguém</SelectItem>
+                  <SelectItem value="Lincoln" className="text-xs">Lincoln</SelectItem>
+                  <SelectItem value="Gustavo" className="text-xs">Gustavo</SelectItem>
+                  <SelectItem value="Ingrid" className="text-xs">Ingrid</SelectItem>
+                </SelectContent>
+              </Select>
+            </PropRow>
           </div>
 
           {task.tags.length > 0 && (
@@ -265,19 +304,20 @@ function TaskDetailContent({ task, onClose }: { task: Task; onClose: () => void 
 
           {/* Tabs */}
           <div className="flex flex-col gap-3">
-            <div className="flex gap-1 border-b">
-              {(["checklist", "comments", "activity"] as const).map(t => (
+            <div className="flex gap-1 border-b overflow-x-auto">
+              {(["checklist", "comments", "activity", "links"] as const).map(t => (
                 <button
                   key={t}
                   onClick={() => setTab(t)}
                   className={cn(
-                    "flex items-center gap-1.5 text-xs px-3 py-1.5 border-b-2 transition-colors -mb-px",
+                    "flex items-center gap-1.5 text-xs px-3 py-1.5 border-b-2 transition-colors -mb-px shrink-0",
                     tab === t ? "border-primary text-foreground font-medium" : "border-transparent text-muted-foreground hover:text-foreground"
                   )}
                 >
                   {t === "checklist" && <><CheckSquare className="size-3" />Checklist {checklist.length > 0 && `(${checklistDone}/${checklist.length})`}</>}
                   {t === "comments" && <><MessageSquare className="size-3" />Comentários {comments.length > 0 && `(${comments.length})`}</>}
                   {t === "activity" && <><Activity className="size-3" />Atividade</>}
+                  {t === "links" && <><Link2 className="size-3" />Links {task.links.length > 0 && `(${task.links.length})`}</>}
                 </button>
               ))}
             </div>
@@ -380,6 +420,52 @@ function TaskDetailContent({ task, onClose }: { task: Task; onClose: () => void 
                     </p>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* LINKS */}
+            {tab === "links" && (
+              <div className="flex flex-col gap-3">
+                {task.links.length === 0 && (
+                  <p className="text-xs text-muted-foreground text-center py-4">Nenhum link ainda.</p>
+                )}
+                {task.links.map(link => (
+                  <div key={link.id} className="flex items-center gap-2 group p-2 rounded border border-border/50 hover:bg-muted/30">
+                    <a
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 min-w-0 flex flex-col gap-0.5"
+                    >
+                      <span className="text-xs font-medium text-primary underline truncate hover:text-primary/80">{link.title}</span>
+                      <span className="text-xs text-muted-foreground truncate">{link.url}</span>
+                    </a>
+                    <button
+                      onClick={() => deleteTaskLink(task.id, link.id)}
+                      className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all shrink-0"
+                    >
+                      <X className="size-3.5" />
+                    </button>
+                  </div>
+                ))}
+                <div className="flex flex-col gap-2 mt-2 pt-2 border-t">
+                  <Input
+                    placeholder="Título do link"
+                    value={newLinkTitle}
+                    onChange={e => setNewLinkTitle(e.target.value)}
+                    className="h-8 text-xs"
+                  />
+                  <Input
+                    placeholder="URL (https://...)"
+                    value={newLinkUrl}
+                    onChange={e => setNewLinkUrl(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && handleAddLink()}
+                    className="h-8 text-xs"
+                  />
+                  <Button size="sm" variant="outline" className="h-7 px-2" onClick={handleAddLink}>
+                    <Plus className="size-3.5" /> Adicionar link
+                  </Button>
+                </div>
               </div>
             )}
           </div>

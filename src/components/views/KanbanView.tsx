@@ -7,9 +7,9 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { TaskDialog } from "@/components/TaskDialog"
 import { ProjectIcon } from "@/components/ProjectIcon"
-import { Plus, CalendarDays, Flag, CheckCircle2, Circle, MessageSquare, CheckSquare, RefreshCw, Check, X as XIcon, PanelRightOpen } from "lucide-react"
+import { Plus, CalendarDays, Flag, CheckCircle2, Circle, MessageSquare, CheckSquare, RefreshCw, Check, X as XIcon, PanelRightOpen, Clock } from "lucide-react"
 import { isPast, isToday, parseISO } from "date-fns"
-import { cn } from "@/lib/utils"
+import { cn, isTaskStale } from "@/lib/utils"
 import { toast } from "sonner"
 
 const COLUMNS: Status[] = ["todo", "in-progress", "review", "done"]
@@ -28,7 +28,7 @@ function InlineAdd({ status, defaultProjectId }: { status: Status; defaultProjec
   async function save() {
     const t = title.trim()
     if (t) {
-      await addTask({ title: t, description: "", status, priority: "none", projectId: defaultProjectId, dueDate: null, tags: [], recurring: null, position: 0 })
+      await addTask({ title: t, description: "", status, priority: "none", projectId: defaultProjectId, dueDate: null, tags: [], recurring: null, position: 0, assignee: null })
       toast.success("Tarefa criada")
     }
     setTitle("")
@@ -41,7 +41,7 @@ function InlineAdd({ status, defaultProjectId }: { status: Status; defaultProjec
     if (lines.length <= 1) return
     e.preventDefault()
     for (const line of lines) {
-      await addTask({ title: line, description: "", status, priority: "none", projectId: defaultProjectId, dueDate: null, tags: [], recurring: null, position: 0 })
+      await addTask({ title: line, description: "", status, priority: "none", projectId: defaultProjectId, dueDate: null, tags: [], recurring: null, position: 0, assignee: null })
     }
     toast.success(`${lines.length} tarefas criadas!`)
     setActive(false)
@@ -172,12 +172,20 @@ function KanbanCard({ task, onOpenTask }: { task: Task; onOpenTask: (t: Task) =>
       </div>
 
       <div className="flex items-center justify-between pl-6">
-        {project && (
-          <Badge variant="outline" className="text-xs py-0 px-1.5 gap-1">
-            <ProjectIcon iconKey={project.emoji} className="size-3" style={{ color: project.color }} />
-            <span>{project.name}</span>
-          </Badge>
-        )}
+        <div className="flex items-center gap-1">
+          {project && (
+            <Badge variant="outline" className="text-xs py-0 px-1.5 gap-1">
+              <ProjectIcon iconKey={project.emoji} className="size-3" style={{ color: project.color }} />
+              <span>{project.name}</span>
+            </Badge>
+          )}
+          {isTaskStale(task) && (
+            <Badge variant="outline" className="text-xs py-0 px-1.5 gap-1 bg-amber-500/10 border-amber-500/30" title="Sem movimentação há 5+ dias">
+              <Clock className="size-3 text-amber-600" />
+              <span className="text-amber-700">Parada</span>
+            </Badge>
+          )}
+        </div>
         {task.priority !== "none" && (
           <span className={cn("flex items-center gap-1 text-xs ml-auto", priority.color)}>
             <Flag className="size-3" />{priority.label}

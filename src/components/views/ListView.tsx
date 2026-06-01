@@ -18,9 +18,10 @@ import { ProjectIcon } from "@/components/ProjectIcon"
 import {
   Trash2, Search, Flag, ArrowUpDown,
   CheckCircle2, Circle, Plus, RefreshCw, Bookmark, X, Check,
-  GripVertical, CalendarDays, Loader2, PanelRightOpen,
+  GripVertical, CalendarDays, Loader2, PanelRightOpen, Copy, Download,
 } from "lucide-react"
 import { isPast, isToday, parseISO } from "date-fns"
+import { isTaskStale } from "@/lib/utils"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { showConfirm } from "@/components/ConfirmDialog"
@@ -57,7 +58,7 @@ function TaskRow({
   dragHandleProps?: Record<string, unknown>
   isDragging?: boolean
 }) {
-  const { projects, deleteTask, moveTask, updateTask, addChecklistItem, toggleChecklistItem, saving } = useApp()
+  const { projects, deleteTask, moveTask, updateTask, addChecklistItem, toggleChecklistItem, duplicateTask, saving } = useApp()
   const [savingDate, setSavingDate] = useState(false)
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleValue, setTitleValue] = useState(task.title)
@@ -93,6 +94,12 @@ function TaskRow({
   async function handleDelete() {
     const ok = await showConfirm({ title: `Excluir "${task.title}"?`, description: "Esta ação não pode ser desfeita.", confirmLabel: "Excluir", variant: "destructive" })
     if (ok) { deleteTask(task.id); toast.success("Tarefa excluída") }
+  }
+
+  async function handleDuplicate(e: React.MouseEvent) {
+    e.stopPropagation()
+    await duplicateTask(task.id)
+    toast.success("Tarefa duplicada!")
   }
 
   function handleToggleDone(e: React.MouseEvent) {
@@ -227,21 +234,26 @@ function TaskRow({
             </div>
           </div>
         </td>
-        {/* Status — inline select */}
+        {/* Status — inline select with stale indicator */}
         <td className="px-2 py-3 hidden sm:table-cell w-36" onClick={e => e.stopPropagation()}>
-          <Select value={task.status} onValueChange={v => {
-            moveTask(task.id, v as Status)
-            toast.success(`Status: ${STATUS_CONFIG[v as Status].label}`)
-          }}>
-            <SelectTrigger className={cn("h-7 text-xs border-0 shadow-none focus:ring-0 px-2 w-full", status.color, status.bg)}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {(Object.entries(STATUS_CONFIG) as [Status, typeof STATUS_CONFIG[Status]][]).map(([k, v]) => (
-                <SelectItem key={k} value={k} className="text-xs">{v.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-1">
+            {isTaskStale(task) && (
+              <div className="size-2 rounded-full bg-amber-500 shrink-0" title="Sem movimentação há 5+ dias" />
+            )}
+            <Select value={task.status} onValueChange={v => {
+              moveTask(task.id, v as Status)
+              toast.success(`Status: ${STATUS_CONFIG[v as Status].label}`)
+            }}>
+              <SelectTrigger className={cn("h-7 text-xs border-0 shadow-none focus:ring-0 px-2 flex-1", status.color, status.bg)}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(Object.entries(STATUS_CONFIG) as [Status, typeof STATUS_CONFIG[Status]][]).map(([k, v]) => (
+                  <SelectItem key={k} value={k} className="text-xs">{v.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </td>
         {/* Priority — inline select */}
         <td className="px-2 py-3 hidden sm:table-cell w-28" onClick={e => e.stopPropagation()}>
@@ -291,8 +303,20 @@ function TaskRow({
             />
           </div>
         </td>
+        {/* Assignee avatar */}
+        <td className="px-2 py-3 w-6 text-center" onClick={e => e.stopPropagation()}>
+          {task.assignee && (
+            <div className="size-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-semibold">
+              {task.assignee[0]}
+            </div>
+          )}
+        </td>
+
         {/* Actions */}
-        <td className="px-2 py-3 w-10" onClick={e => e.stopPropagation()}>
+        <td className="px-2 py-3 w-16 flex items-center gap-1" onClick={e => e.stopPropagation()}>
+          <Button variant="ghost" size="icon" className="size-7 hover:text-blue-500" onClick={handleDuplicate} title="Duplicar">
+            <Copy className="size-3.5" />
+          </Button>
           <Button variant="ghost" size="icon" className="size-7 hover:text-destructive" onClick={handleDelete}>
             <Trash2 className="size-3.5" />
           </Button>
@@ -316,7 +340,7 @@ function InlineAddRow({ activeProjectId, defaultProjectId }: { activeProjectId: 
     await addTask({
       title: title.trim(), description: "", status: "todo", priority: "none",
       projectId: activeProjectId ?? defaultProjectId, dueDate: null, tags: [], recurring: null,
-      position: tasks.length,
+      position: tasks.length, assignee: null,
     })
     toast.success("Tarefa criada")
     setTitle("")
@@ -339,7 +363,7 @@ function InlineAddRow({ activeProjectId, defaultProjectId }: { activeProjectId: 
         await addTask({
           title: lines[i], description: "", status: "todo", priority: "none",
           projectId: activeProjectId ?? defaultProjectId, dueDate: null, tags: [], recurring: null,
-          position: tasks.length + i,
+          position: tasks.length + i, assignee: null,
         })
       }
       toast.success(`${lines.length} tarefas criadas!`)
@@ -351,7 +375,7 @@ function InlineAddRow({ activeProjectId, defaultProjectId }: { activeProjectId: 
   if (!active) {
     return (
       <tr>
-        <td colSpan={8} className="px-4 py-2">
+        <td colSpan={10} className="px-4 py-2">
           <button onClick={activate} className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full py-1">
             <Plus className="size-3.5" /> Adicionar tarefa <span className="text-muted-foreground/50 text-[10px]">(cole texto com múltiplas linhas para criar várias)</span>
           </button>
@@ -362,7 +386,7 @@ function InlineAddRow({ activeProjectId, defaultProjectId }: { activeProjectId: 
 
   return (
     <tr className="border-t">
-      <td colSpan={8} className="px-4 py-2">
+      <td colSpan={10} className="px-4 py-2">
         <div className="flex items-center gap-2">
           <Circle className="size-4 text-muted-foreground shrink-0" />
           <input
@@ -428,9 +452,10 @@ function BulkBar({ selected, onClear, onDelete, onChangeStatus, onChangePriority
 interface ListViewProps {
   onOpenTask: (task: Task) => void
   appliedView?: SavedView | null
+  todayFilter?: boolean
 }
 
-export function ListView({ onOpenTask, appliedView }: ListViewProps) {
+export function ListView({ onOpenTask, appliedView, todayFilter = false }: ListViewProps) {
   const { tasks, projects, deleteTasks, updateTasks, activeProjectId, addSavedView, reorderTasks } = useApp()
   const [newOpen, setNewOpen] = useState(false)
   const [search, setSearch] = useState(appliedView?.filters.search ?? "")
@@ -449,6 +474,13 @@ export function ListView({ onOpenTask, appliedView }: ListViewProps) {
 
   const filtered = tasks
     .filter(t => {
+      if (todayFilter) {
+        // Show only tasks due today or overdue, and not done
+        if (t.status === "done") return false
+        if (!t.dueDate) return false
+        const dueDate = parseISO(t.dueDate)
+        if (!(isPast(dueDate) || isToday(dueDate))) return false
+      }
       if (activeProjectId && t.projectId !== activeProjectId) return false
       if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false
       if (filterStatus !== "all" && t.status !== filterStatus) return false
@@ -518,6 +550,30 @@ export function ListView({ onOpenTask, appliedView }: ListViewProps) {
     )
   }
 
+  function exportCSV() {
+    const headers = ["Título", "Status", "Prioridade", "Projeto", "Prazo", "Responsável", "Tags"]
+    const rows = filtered.map(t => [
+      t.title,
+      STATUS_CONFIG[t.status].label,
+      PRIORITY_CONFIG[t.priority].label,
+      projects.find(p => p.id === t.projectId)?.name ?? "",
+      t.dueDate ?? "",
+      t.assignee ?? "",
+      t.tags.join(";"),
+    ])
+    const csv = [headers, ...rows]
+      .map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(","))
+      .join("\n")
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.download = `cative-tasks-${new Date().toISOString().slice(0, 10)}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+    toast.success("CSV exportado!")
+  }
+
   return (
     <>
       <div className="flex flex-col gap-4">
@@ -555,6 +611,9 @@ export function ListView({ onOpenTask, appliedView }: ListViewProps) {
               <Bookmark className="size-3.5" /> Salvar view
             </Button>
           )}
+          <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs" onClick={exportCSV}>
+            <Download className="size-3.5" /> CSV
+          </Button>
         </div>
 
         {/* Table */}
@@ -572,13 +631,14 @@ export function ListView({ onOpenTask, appliedView }: ListViewProps) {
                       <th className="text-left px-2 py-2.5 hidden sm:table-cell w-28"><SortBtn k="priority" label="Prioridade" /></th>
                       <th className="text-left px-2 py-2.5 hidden md:table-cell w-36">Projeto</th>
                       <th className="text-left px-2 py-2.5 hidden lg:table-cell w-32"><SortBtn k="dueDate" label="Prazo" /></th>
-                      <th className="w-10" />
+                      <th className="w-6" />
+                      <th className="w-16" />
                     </tr>
                   </thead>
                   <tbody>
                     {filtered.length === 0 && (
                       <tr>
-                        <td colSpan={8} className="text-center py-10 text-muted-foreground text-sm">Nenhuma tarefa encontrada</td>
+                        <td colSpan={10} className="text-center py-10 text-muted-foreground text-sm">Nenhuma tarefa encontrada</td>
                       </tr>
                     )}
                     {filtered.map(task => (

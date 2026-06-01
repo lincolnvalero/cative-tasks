@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { addDays, addWeeks, addMonths, format, parseISO } from "date-fns"
 import { toast } from "sonner"
-import type { Task, Project, Status, Comment, ChecklistItem, ActivityEntry, SavedView, Recurring } from "@/types/task"
+import type { Task, Project, Status, Comment, ChecklistItem, ActivityEntry, SavedView, Recurring, TaskLink } from "@/types/task"
 import { DEFAULT_PROJECTS, DEFAULT_SAVED_VIEWS } from "@/types/task"
 import { supabase } from "@/lib/supabase"
 
@@ -21,6 +21,7 @@ function mapTask(
   comments: Comment[],
   checklist: ChecklistItem[],
   activity: ActivityEntry[],
+  links: TaskLink[],
 ): Task {
   return {
     id: row.id as string,
@@ -37,6 +38,8 @@ function mapTask(
     comments,
     checklist,
     activity,
+    links,
+    assignee: (row.assignee as string) ?? null,
   }
 }
 
@@ -50,6 +53,10 @@ function mapChecklist(row: Record<string, unknown>): ChecklistItem {
 
 function mapActivity(row: Record<string, unknown>): ActivityEntry {
   return { id: row.id as string, text: row.text as string, createdAt: row.created_at as string }
+}
+
+function mapTaskLink(row: Record<string, unknown>): TaskLink {
+  return { id: row.id as string, title: row.title as string, url: row.url as string }
 }
 
 function mapView(row: Record<string, unknown>): SavedView {
@@ -101,6 +108,7 @@ export function useTaskStore() {
           { data: commentRows },
           { data: checklistRows },
           { data: activityRows },
+          { data: linkRows },
           { data: viewRows },
         ] = await Promise.all([
           supabase.from("ct_projects").select("*").order("created_at"),
@@ -108,6 +116,7 @@ export function useTaskStore() {
           supabase.from("ct_task_comments").select("*").order("created_at"),
           supabase.from("ct_task_checklist").select("*").order("position").order("created_at"),
           supabase.from("ct_task_activity").select("*").order("created_at"),
+          supabase.from("ct_task_links").select("*").order("created_at"),
           supabase.from("ct_saved_views").select("*").order("created_at"),
         ])
 
@@ -120,6 +129,7 @@ export function useTaskStore() {
         const commentsByTask: Record<string, Comment[]> = {}
         const checklistByTask: Record<string, ChecklistItem[]> = {}
         const activityByTask: Record<string, ActivityEntry[]> = {}
+        const linksByTask: Record<string, TaskLink[]> = {}
 
         for (const r of commentRows ?? []) {
           const tid = r.task_id as string
@@ -136,10 +146,15 @@ export function useTaskStore() {
           if (!activityByTask[tid]) activityByTask[tid] = []
           activityByTask[tid].push(mapActivity(r))
         }
+        for (const r of linkRows ?? []) {
+          const tid = r.task_id as string
+          if (!linksByTask[tid]) linksByTask[tid] = []
+          linksByTask[tid].push(mapTaskLink(r))
+        }
 
         const mappedTasks = (taskRows ?? [])
           .sort((a, b) => ((a.position as number) ?? 0) - ((b.position as number) ?? 0))
-          .map(r => mapTask(r, commentsByTask[r.id as string] ?? [], checklistByTask[r.id as string] ?? [], activityByTask[r.id as string] ?? []))
+          .map(r => mapTask(r, commentsByTask[r.id as string] ?? [], checklistByTask[r.id as string] ?? [], activityByTask[r.id as string] ?? [], linksByTask[r.id as string] ?? []))
         setTasks(mappedTasks)
 
         // Subscribe to realtime changes
@@ -147,9 +162,9 @@ export function useTaskStore() {
           .channel('ct_tasks_changes')
           .on('postgres_changes', { event: '*', schema: 'public', table: 'ct_tasks' }, (payload) => {
             if (payload.eventType === 'UPDATE') {
-              setTasks(prev => prev.map(t => t.id === payload.new.id ? mapTask(payload.new, commentsByTask[payload.new.id] ?? [], checklistByTask[payload.new.id] ?? [], activityByTask[payload.new.id] ?? []) : t))
+              setTasks(prev => prev.map(t => t.id === payload.new.id ? mapTask(payload.new, commentsByTask[payload.new.id] ?? [], checklistByTask[payload.new.id] ?? [], activityByTask[payload.new.id] ?? [], linksByTask[payload.new.id] ?? []) : t))
             } else if (payload.eventType === 'INSERT') {
-              const newTask = mapTask(payload.new, [], [], [])
+              const newTask = mapTask(payload.new, [], [], [], [])
               setTasks(prev => [newTask, ...prev])
             } else if (payload.eventType === 'DELETE') {
               setTasks(prev => prev.filter(t => t.id !== payload.old.id))
@@ -169,7 +184,7 @@ export function useTaskStore() {
 
   // ── Tasks ──────────────────────────────────────────────────────────────────
 
-  async function addTask(taskData: Omit<Task, "id" | "createdAt" | "comments" | "checklist" | "activity">) {
+  async function addTask(taskData: Omit<Task, "id" | "createdAt" | "comments" | "checklist" | "activity" | "links">) {
     try {
       setSaving(true)
       const { data, error } = await supabase.from("ct_tasks").insert({
@@ -182,6 +197,7 @@ export function useTaskStore() {
         tags: taskData.tags,
         recurring: taskData.recurring || null,
         position: taskData.position ?? 0,
+        assignee: taskData.assignee || null,
       }).select().single()
 
       if (error || !data) {
@@ -191,7 +207,7 @@ export function useTaskStore() {
 
       // Insert initial activity
       const { data: actRow } = await supabase.from("ct_task_activity").insert({ task_id: data.id, text: "Tarefa criada" }).select().single()
-      const newTask = mapTask(data, [], [], actRow ? [mapActivity(actRow)] : [])
+      const newTask = mapTask(data, [], [], actRow ? [mapActivity(actRow)] : [], [])
       setTasks(prev => [newTask, ...prev])
       return newTask
     } finally {
@@ -211,6 +227,7 @@ export function useTaskStore() {
       if (patch.dueDate !== undefined) dbPatch.due_date = patch.dueDate || null
       if (patch.tags !== undefined) dbPatch.tags = patch.tags
       if (patch.recurring !== undefined) dbPatch.recurring = patch.recurring || null
+      if (patch.assignee !== undefined) dbPatch.assignee = patch.assignee || null
 
       if (Object.keys(dbPatch).length > 0) {
         const { error } = await supabase.from("ct_tasks").update(dbPatch).eq("id", id)
@@ -341,7 +358,7 @@ export function useTaskStore() {
               if (!data) return
               supabase.from("ct_task_activity").insert({ task_id: data.id, text: "Recorrência gerada automaticamente" }).select().single().then(({ data: actR }) => {
                 const resetChecklist = task.checklist.map(i => ({ ...i, id: crypto.randomUUID(), done: false }))
-                const newTask = mapTask(data, [], resetChecklist, actR ? [mapActivity(actR)] : [])
+                const newTask = mapTask(data, [], resetChecklist, actR ? [mapActivity(actR)] : [], [])
                 setTasks(p => [newTask, ...p])
               })
             })
@@ -513,6 +530,92 @@ export function useTaskStore() {
     }
   }
 
+  // ── Task Links ─────────────────────────────────────────────────────────────
+
+  async function addTaskLink(taskId: string, title: string, url: string) {
+    try {
+      setSaving(true)
+      const { data, error } = await supabase.from("ct_task_links").insert({ task_id: taskId, title, url }).select().single()
+      if (error || !data) {
+        toast.error("Erro ao adicionar link")
+        return
+      }
+      const link = mapTaskLink(data)
+      setTasks(prev => prev.map(t => t.id === taskId ? { ...t, links: [...(t.links ?? []), link] } : t))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function deleteTaskLink(taskId: string, linkId: string) {
+    try {
+      setSaving(true)
+      const { error } = await supabase.from("ct_task_links").delete().eq("id", linkId)
+      if (error) {
+        toast.error("Erro ao excluir link")
+        return
+      }
+      setTasks(prev => prev.map(t => t.id === taskId ? { ...t, links: t.links.filter(l => l.id !== linkId) } : t))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // ── Duplicate Task ─────────────────────────────────────────────────────────
+
+  async function duplicateTask(id: string): Promise<Task | undefined> {
+    try {
+      setSaving(true)
+      const task = tasks.find(t => t.id === id)
+      if (!task) {
+        toast.error("Tarefa não encontrada")
+        return
+      }
+
+      const { data, error } = await supabase.from("ct_tasks").insert({
+        title: `Cópia de ${task.title}`,
+        description: task.description,
+        status: task.status,
+        priority: task.priority,
+        project_id: task.projectId || null,
+        due_date: task.dueDate || null,
+        tags: task.tags,
+        recurring: task.recurring || null,
+        position: 0,
+        assignee: task.assignee || null,
+      }).select().single()
+
+      if (error || !data) {
+        toast.error("Erro ao duplicar tarefa")
+        return
+      }
+
+      // Insert activity entry
+      const { data: actRow } = await supabase.from("ct_task_activity").insert({
+        task_id: data.id,
+        text: `Tarefa duplicada de "${task.title}"`
+      }).select().single()
+
+      // Duplicate checklist items
+      const resetChecklist = task.checklist.map(item => ({
+        task_id: data.id,
+        text: item.text,
+        done: false,
+        position: task.checklist.indexOf(item),
+      }))
+
+      if (resetChecklist.length > 0) {
+        await supabase.from("ct_task_checklist").insert(resetChecklist)
+      }
+
+      const newTask = mapTask(data, [], task.checklist.map((item) => ({ ...item, done: false })), actRow ? [mapActivity(actRow)] : [], [])
+      setTasks(prev => [newTask, ...prev])
+      return newTask
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return {
     tasks, projects, savedViews, loading, saving,
     reorderTasks,
@@ -521,5 +624,7 @@ export function useTaskStore() {
     addChecklistItem, toggleChecklistItem, deleteChecklistItem,
     addProject, updateProject, deleteProject,
     addSavedView, deleteSavedView,
+    addTaskLink, deleteTaskLink,
+    duplicateTask,
   }
 }

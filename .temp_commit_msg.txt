@@ -1,0 +1,26 @@
+feat: 10 funcionalidades ClickUp/Asana - hoje, duplicar, links, stale, responsavel, csv, atalhos, tab-count, feitas-hoje, carga-semanal
+
+Implementadas:
+1. Vista "Hoje" - chip automático que filtra tarefas com vencimento hoje ou vencidas
+2. Duplicar tarefa - botão Copy que clona tarefa com checklist resetado
+3. Links úteis - nova aba para adicionar/remover links nas tarefas, salvos em Supabase
+4. Indicador de tarefa parada - tarefa sem movimentação há 5+ dias aparece com badge/dot
+5. Campo "Responsável" - dropdown com Ninguém/Lincoln/Gustavo/Ingrid, avatar na lista
+6. Exportar CSV - botão Download na ListView com todos os dados filtrados
+7. Painel de atalhos - tecla ? abre dialog com atalhos do app (N, Ctrl+K, ?, D)
+8. Título da aba - document.title atualizado com contagem de tarefas urgentes
+9. Widget "Feitas hoje" - dashboard exibe tarefas concluídas desde meia-noite
+10. Vista de carga semanal - nova aba "Carga" agrupa tarefas por semana de entrega com barras
+
+Mudanças:
+- types/task.ts: adicionado TaskLink interface e campos links[], assignee
+- Supabase: migration adicionou ct_task_links table e coluna assignee
+- useTaskStore.ts: funções addTaskLink, deleteTaskLink, duplicateTask
+- utils.ts: helper isTaskStale() para cálculo dinâmico
+- KanbanView: indicador stale com badge "Parada" em amarelo
+- ListView: filtro todayFilter, CSV export, avatar assignee, stale indicator
+- TaskDetailSheet: aba "Links" com formulário, botão Copy, campo Responsável
+- TasksPage: chip "Hoje", atalho "?", tab "Carga", update document.title
+- DashboardPage: widget "Feitas hoje" no grid de stats
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>

@@ -66,7 +66,7 @@ export function TaskDialog({ open, onClose, task, defaultStatus }: TaskDialogPro
       updateTask(task.id, payload)
       toast.success("Tarefa atualizada")
     } else {
-      addTask({ ...payload, recurring: null, position: 0 })
+      addTask({ ...payload, recurring: null, position: 0, assignee: null })
       toast.success("Tarefa criada!")
     }
     onClose()

@@ -5,9 +5,9 @@ import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
 import { STATUS_CONFIG, PRIORITY_CONFIG } from "@/types/task"
 import type { Status, Priority, Task } from "@/types/task"
-import { CheckCircle2, Clock, AlertTriangle, ListTodo, TrendingUp, Flame, Upload } from "lucide-react"
+import { CheckCircle2, Clock, AlertTriangle, ListTodo, TrendingUp, Flame, Upload, Zap } from "lucide-react"
 import { ProjectIcon } from "@/components/ProjectIcon"
-import { isPast, parseISO, format, isThisWeek } from "date-fns"
+import { isPast, parseISO, format, isThisWeek, isToday } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
@@ -94,6 +94,7 @@ export function DashboardPage() {
             tags: lt.tags || [],
             recurring: lt.recurring ?? null,
             position: i,
+            assignee: null,
           })
 
           if (!newTask) throw new Error(`Falha ao criar "${lt.title}"`)
@@ -133,6 +134,14 @@ export function DashboardPage() {
   const inProgress = tasks.filter(t => t.status === "in-progress").length
   const overdue = tasks.filter(t => t.dueDate && t.status !== "done" && isPast(parseISO(t.dueDate))).length
   const dueThisWeek = tasks.filter(t => t.dueDate && t.status !== "done" && isThisWeek(parseISO(t.dueDate))).length
+  const doneToday = tasks.filter(t => {
+    if (t.status !== "done") return false
+    const lastActivity = t.activity?.[t.activity.length - 1]
+    if (!lastActivity) return false
+    // Check if last activity is "Status alterado para Concluído" and is from today
+    if (!lastActivity.text.includes("Concluído")) return false
+    return isToday(parseISO(lastActivity.createdAt))
+  }).length
   const completionRate = total > 0 ? Math.round((done / total) * 100) : 0
 
   const byStatus = (Object.keys(STATUS_CONFIG) as Status[]).map(s => ({
@@ -186,11 +195,12 @@ export function DashboardPage() {
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard icon={<ListTodo className="size-5" />} label="Total de tarefas" value={total} sub="tarefas criadas" color="text-foreground" />
         <StatCard icon={<CheckCircle2 className="size-5 text-green-500" />} label="Concluídas" value={done} sub={`${completionRate}% de conclusão`} color="text-green-500" />
         <StatCard icon={<Clock className="size-5 text-yellow-500" />} label="Em andamento" value={inProgress} sub={`${dueThisWeek} vencem esta semana`} color="text-yellow-500" />
         <StatCard icon={<AlertTriangle className="size-5 text-red-500" />} label="Atrasadas" value={overdue} sub="requerem atenção" color="text-red-500" />
+        <StatCard icon={<Zap className="size-5 text-primary" />} label="Feitas hoje" value={doneToday} sub="desde meia-noite" color="text-primary" />
       </div>
 
       {/* Progress */}

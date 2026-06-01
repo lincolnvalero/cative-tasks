@@ -4,11 +4,14 @@ import { Button } from "@/components/ui/button"
 import { KanbanView } from "@/components/views/KanbanView"
 import { ListView } from "@/components/views/ListView"
 import { CalendarView } from "@/components/views/CalendarView"
+import { WorkloadView } from "@/components/views/WorkloadView"
 import { TaskDialog } from "@/components/TaskDialog"
+import { ShortcutsDialog } from "@/components/ShortcutsDialog"
 import { useApp } from "@/context/AppContext"
 import type { Task } from "@/types/task"
-import { Plus, Kanban, List, CalendarDays, X } from "lucide-react"
+import { Plus, Kanban, List, CalendarDays, BarChart3, X } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { isToday, isPast, parseISO } from "date-fns"
 
 interface Props {
   onOpenTask: (task: Task) => void
@@ -17,11 +20,13 @@ interface Props {
 }
 
 export function TasksPage({ onOpenTask, newTaskOpen = false, onNewTaskClose }: Props) {
-  const { projects, activeProjectId, setActiveProjectId, savedViews, deleteSavedView } = useApp()
+  const { projects, activeProjectId, setActiveProjectId, savedViews, deleteSavedView, tasks } = useApp()
   const [localNewOpen, setLocalNewOpen] = useState(false)
   const [activeViewId, setActiveViewId] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<"kanban" | "list" | "calendar">(
-    () => (localStorage.getItem("cative-active-tab") as "kanban" | "list" | "calendar") || "kanban"
+  const [todayFilter, setTodayFilter] = useState(false)
+  const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState<"kanban" | "list" | "calendar" | "workload">(
+    () => (localStorage.getItem("cative-active-tab") as "kanban" | "list" | "calendar" | "workload") || "kanban"
   )
   const activeProject = projects.find(p => p.id === activeProjectId)
   const appliedView = savedViews.find(v => v.id === activeViewId) ?? null
@@ -30,16 +35,34 @@ export function TasksPage({ onOpenTask, newTaskOpen = false, onNewTaskClose }: P
   function closeNew() { setLocalNewOpen(false); onNewTaskClose?.() }
 
   function handleTabChange(tab: string) {
-    if (tab === "kanban" || tab === "list" || tab === "calendar") {
+    if (tab === "kanban" || tab === "list" || tab === "calendar" || tab === "workload") {
       setActiveTab(tab)
       localStorage.setItem("cative-active-tab", tab)
     }
   }
 
+  // Update document title with urgent count
+  useEffect(() => {
+    const urgent = tasks.filter(t =>
+      t.status !== "done" && t.dueDate &&
+      (isPast(parseISO(t.dueDate)) || isToday(parseISO(t.dueDate)))
+    ).length
+    document.title = urgent > 0 ? `(${urgent}) Cative Tasks` : "Cative Tasks"
+  }, [tasks])
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const tag = (e.target as HTMLElement).tagName
-      if (tag === "INPUT" || tag === "TEXTAREA" || e.metaKey || e.ctrlKey) return
+      if (tag === "INPUT" || tag === "TEXTAREA") return
+
+      if (e.key === "?") {
+        e.preventDefault()
+        setShortcutsOpen(true)
+        return
+      }
+
+      if (e.metaKey || e.ctrlKey) return
+
       if (e.key === "n" || e.key === "N") { e.preventDefault(); setLocalNewOpen(true) }
     }
     window.addEventListener("keydown", onKey)
@@ -74,18 +97,24 @@ export function TasksPage({ onOpenTask, newTaskOpen = false, onNewTaskClose }: P
         </div>
 
         {/* Saved views quick-access */}
-        {savedViews.length > 0 && (
+        {(savedViews.length > 0 || true) && (
           <div className="flex gap-1.5 flex-wrap">
             <button
-              onClick={() => setActiveViewId(null)}
-              className={cn("text-xs px-3 py-1 rounded-full border transition-colors", !activeViewId ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted")}
+              onClick={() => { setTodayFilter(!todayFilter); setActiveViewId(null) }}
+              className={cn("text-xs px-3 py-1 rounded-full border transition-colors", todayFilter ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted")}
+            >
+              📅 Hoje
+            </button>
+            <button
+              onClick={() => { setTodayFilter(false); setActiveViewId(null) }}
+              className={cn("text-xs px-3 py-1 rounded-full border transition-colors", !todayFilter && !activeViewId ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted")}
             >
               Todas
             </button>
             {savedViews.map(view => (
               <div key={view.id} className="flex items-center">
                 <button
-                  onClick={() => setActiveViewId(activeViewId === view.id ? null : view.id)}
+                  onClick={() => { setTodayFilter(false); setActiveViewId(activeViewId === view.id ? null : view.id) }}
                   className={cn("text-xs px-3 py-1 rounded-l-full border border-r-0 transition-colors", activeViewId === view.id ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted")}
                 >
                   {view.name}
@@ -117,6 +146,10 @@ export function TasksPage({ onOpenTask, newTaskOpen = false, onNewTaskClose }: P
               <span className="hidden sm:inline">Calendário</span>
               <span className="sm:hidden">Cal.</span>
             </TabsTrigger>
+            <TabsTrigger value="workload" className="gap-1.5 text-xs sm:text-sm">
+              <BarChart3 className="size-3.5" />
+              <span className="hidden sm:inline">Carga</span>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="kanban" className="flex-1 overflow-auto mt-3">
@@ -124,16 +157,21 @@ export function TasksPage({ onOpenTask, newTaskOpen = false, onNewTaskClose }: P
           </TabsContent>
 
           <TabsContent value="list" className="mt-3">
-            <ListView onOpenTask={onOpenTask} appliedView={appliedView} />
+            <ListView onOpenTask={onOpenTask} appliedView={appliedView} todayFilter={todayFilter} />
           </TabsContent>
 
           <TabsContent value="calendar" className="mt-3" style={{ height: "calc(100vh - 240px)" }}>
             <CalendarView onOpenTask={onOpenTask} />
           </TabsContent>
+
+          <TabsContent value="workload" className="mt-3">
+            <WorkloadView onOpenTask={onOpenTask} />
+          </TabsContent>
         </Tabs>
       </div>
 
       <TaskDialog open={isNewOpen} onClose={closeNew} />
+      <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
     </>
   )
 }

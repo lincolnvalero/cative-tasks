@@ -141,10 +141,6 @@ export function ProjectsPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5">
-                    <div className="size-3 rounded-full" style={{ background: project.color }} />
-                    <span className="text-xs text-muted-foreground font-mono">{project.color}</span>
-                  </div>
                 </CardContent>
               </Card>
             )
