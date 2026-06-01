@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { TaskDialog } from "@/components/TaskDialog"
 import { ProjectIcon } from "@/components/ProjectIcon"
-import { Plus, CalendarDays, Flag, CheckCircle2, Circle, MessageSquare, CheckSquare, RefreshCw, Check, X as XIcon } from "lucide-react"
+import { Plus, CalendarDays, Flag, CheckCircle2, Circle, MessageSquare, CheckSquare, RefreshCw, Check, X as XIcon, PanelRightOpen } from "lucide-react"
 import { isPast, isToday, parseISO } from "date-fns"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -87,6 +87,24 @@ function KanbanCard({ task, onOpenTask }: { task: Task; onOpenTask: (t: Task) =>
   const [checklistOpen, setChecklistOpen] = useState(false)
   const [newItem, setNewItem] = useState("")
   const newItemRef = useRef<HTMLInputElement>(null)
+  const [editingTitle, setEditingTitle] = useState(false)
+  const [titleValue, setTitleValue] = useState(task.title)
+  const titleInputRef = useRef<HTMLInputElement>(null)
+
+  function startEditTitle(e: React.MouseEvent) {
+    e.stopPropagation()
+    setTitleValue(task.title)
+    setEditingTitle(true)
+    setTimeout(() => titleInputRef.current?.focus(), 30)
+  }
+
+  function saveTitle() {
+    if (titleValue.trim() && titleValue !== task.title) {
+      updateTask(task.id, { title: titleValue.trim() })
+      toast.success("Título atualizado")
+    }
+    setEditingTitle(false)
+  }
   const project = projects.find(p => p.id === task.projectId)
   const priority = PRIORITY_CONFIG[task.priority]
   const isDone = task.status === "done"
@@ -105,24 +123,51 @@ function KanbanCard({ task, onOpenTask }: { task: Task; onOpenTask: (t: Task) =>
   return (
     <div
       className={cn(
-        "bg-card border rounded-xl p-3 flex flex-col gap-2 cursor-pointer hover:shadow-md active:scale-[0.98] transition-all select-none touch-pan-y",
+        "bg-card border rounded-xl p-3 flex flex-col gap-2 hover:shadow-md transition-all select-none",
         overdue && "border-red-400/60",
         dueToday && "border-yellow-400/60",
         isDone && "opacity-55"
       )}
-      onClick={() => onOpenTask(task)}
       draggable
       onDragStart={e => e.dataTransfer.setData("taskId", task.id)}
     >
-      <div className="flex items-start gap-2 min-w-0">
+      <div className="flex items-start gap-2 min-w-0 group/card">
         <button onClick={toggleDone} className="mt-0.5 shrink-0 text-muted-foreground hover:text-primary transition-colors">
           {isDone ? <CheckCircle2 className="size-4 text-green-500" /> : <Circle className="size-4" />}
         </button>
-        <div className="flex-1 min-w-0 flex items-start gap-1">
-          <p className={cn("text-sm font-medium leading-snug break-words min-w-0 flex-1", isDone && "line-through")}>{task.title}</p>
-          {task.recurring && (
-            <RefreshCw className="size-3 text-muted-foreground shrink-0 mt-0.5" aria-label="Recorrente" />
+        <div className="flex-1 min-w-0">
+          {editingTitle ? (
+            <input
+              ref={titleInputRef}
+              className="text-sm font-medium bg-transparent outline-none border-b border-primary w-full leading-snug"
+              value={titleValue}
+              onChange={e => setTitleValue(e.target.value)}
+              onBlur={saveTitle}
+              onKeyDown={e => {
+                if (e.key === "Enter") saveTitle()
+                if (e.key === "Escape") { setTitleValue(task.title); setEditingTitle(false) }
+              }}
+            />
+          ) : (
+            <p
+              className={cn("text-sm font-medium leading-snug break-words cursor-text", isDone && "line-through")}
+              onClick={startEditTitle}
+              title="Clique para editar"
+            >
+              {task.title}
+            </p>
           )}
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          {task.recurring && <RefreshCw className="size-3 text-muted-foreground" aria-label="Recorrente" />}
+          {/* Ícone para abrir detalhes */}
+          <button
+            onClick={e => { e.stopPropagation(); onOpenTask(task) }}
+            className="text-muted-foreground/30 hover:text-primary opacity-0 group-hover/card:opacity-100 transition-all"
+            title="Abrir detalhes"
+          >
+            <PanelRightOpen className="size-3.5" />
+          </button>
         </div>
       </div>
 

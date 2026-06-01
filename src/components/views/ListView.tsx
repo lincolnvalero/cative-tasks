@@ -18,7 +18,7 @@ import { ProjectIcon } from "@/components/ProjectIcon"
 import {
   Trash2, Search, Flag, ArrowUpDown,
   CheckCircle2, Circle, Plus, RefreshCw, Bookmark, X, Check,
-  GripVertical, CalendarDays, Loader2,
+  GripVertical, CalendarDays, Loader2, PanelRightOpen,
 } from "lucide-react"
 import { isPast, isToday, parseISO } from "date-fns"
 import { cn } from "@/lib/utils"
@@ -59,6 +59,24 @@ function TaskRow({
 }) {
   const { projects, deleteTask, moveTask, updateTask, addChecklistItem, toggleChecklistItem, saving } = useApp()
   const [savingDate, setSavingDate] = useState(false)
+  const [editingTitle, setEditingTitle] = useState(false)
+  const [titleValue, setTitleValue] = useState(task.title)
+  const titleInputRef = useRef<HTMLInputElement>(null)
+
+  function startEditTitle(e: React.MouseEvent) {
+    e.stopPropagation()
+    setTitleValue(task.title)
+    setEditingTitle(true)
+    setTimeout(() => titleInputRef.current?.focus(), 30)
+  }
+
+  function saveTitle() {
+    if (titleValue.trim() && titleValue !== task.title) {
+      updateTask(task.id, { title: titleValue.trim() })
+      toast.success("Título atualizado")
+    }
+    setEditingTitle(false)
+  }
 
   const project = projects.find(p => p.id === task.projectId)
   const status = STATUS_CONFIG[task.status]
@@ -102,13 +120,12 @@ function TaskRow({
         ref={dragRef}
         style={dragStyle}
         className={cn(
-          "hover:bg-muted/20 transition-colors cursor-pointer",
+          "hover:bg-muted/20 transition-colors",
           overdue && "bg-red-500/5",
           selected && "bg-primary/5",
           isDragging && "opacity-50 bg-muted/30",
           "border-b last:border-0"
         )}
-        onClick={() => onOpenTask(task)}
       >
         {/* Drag handle */}
         <td className="px-2 py-3 w-7" onClick={e => e.stopPropagation()}>
@@ -120,18 +137,44 @@ function TaskRow({
         <td className="px-2 py-3 w-8" onClick={e => e.stopPropagation()}>
           <input type="checkbox" checked={selected} onChange={onToggleSelect} className="rounded" />
         </td>
-        {/* Title — permite quebra de linha, sem truncate */}
-        <td className="px-2 py-2 cursor-pointer min-w-0" onClick={() => onOpenTask(task)}>
+        {/* Title — inline edit ao clicar, ícone abre o sheet */}
+        <td className="px-2 py-2 min-w-0">
           <div className="flex items-start gap-2 min-w-0">
-            <button onClick={handleToggleDone} className="mt-0.5 text-muted-foreground hover:text-primary shrink-0">
+            <button onClick={e => { e.stopPropagation(); handleToggleDone(e) }} className="mt-0.5 text-muted-foreground hover:text-primary shrink-0">
               {isDone ? <CheckCircle2 className="size-4 text-green-500" /> : <Circle className="size-4" />}
             </button>
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className={cn("font-medium text-sm leading-snug", isDone && "line-through text-muted-foreground")}>
-                  {task.title}
-                </span>
-                {task.recurring && <RefreshCw className="size-3 text-muted-foreground shrink-0" aria-label="Recorrente" />}
+              <div className="flex items-start gap-1.5 group/title">
+                {editingTitle ? (
+                  <input
+                    ref={titleInputRef}
+                    className="font-medium text-sm bg-transparent outline-none border-b border-primary w-full"
+                    value={titleValue}
+                    onChange={e => setTitleValue(e.target.value)}
+                    onBlur={saveTitle}
+                    onKeyDown={e => {
+                      if (e.key === "Enter") saveTitle()
+                      if (e.key === "Escape") { setTitleValue(task.title); setEditingTitle(false) }
+                    }}
+                  />
+                ) : (
+                  <span
+                    className={cn("font-medium text-sm leading-snug cursor-text flex-1", isDone && "line-through text-muted-foreground")}
+                    onClick={startEditTitle}
+                    title="Clique para editar"
+                  >
+                    {task.title}
+                  </span>
+                )}
+                {task.recurring && <RefreshCw className="size-3 text-muted-foreground shrink-0 mt-0.5" aria-label="Recorrente" />}
+                {/* Ícone para abrir o painel de detalhes */}
+                <button
+                  onClick={e => { e.stopPropagation(); onOpenTask(task) }}
+                  className="shrink-0 mt-0.5 text-muted-foreground/30 hover:text-primary opacity-0 group-hover/title:opacity-100 transition-all"
+                  title="Abrir detalhes"
+                >
+                  <PanelRightOpen className="size-3.5" />
+                </button>
               </div>
               {/* Subtarefas sempre visíveis — itálico, cinza, indentado */}
               {checklist.length > 0 && (
