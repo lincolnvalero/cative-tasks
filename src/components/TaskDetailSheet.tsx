@@ -134,40 +134,40 @@ function TaskDetailContent({ task, onClose }: { task: Task; onClose: () => void 
 
   return (
     <>
-      {/* Header */}
-      <div className="flex items-center justify-between px-5 py-3 border-b shrink-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <Badge variant="outline" className={cn("text-xs", statusCfg.color, statusCfg.bg)}>
-            {statusCfg.label}
+      {/* Header — pr-12 garante espaço para o X automático do Sheet */}
+      <div className="flex items-center gap-2 flex-wrap px-5 py-3 pr-12 border-b shrink-0">
+        <Badge variant="outline" className={cn("text-xs", statusCfg.color, statusCfg.bg)}>
+          {statusCfg.label}
+        </Badge>
+        {task.priority !== "none" && (
+          <Badge variant="outline" className={cn("text-xs", priorityCfg.color)}>
+            <Flag className="size-3 mr-1" />{priorityCfg.label}
           </Badge>
-          {task.priority !== "none" && (
-            <Badge variant="outline" className={cn("text-xs", priorityCfg.color)}>
-              <Flag className="size-3 mr-1" />{priorityCfg.label}
-            </Badge>
-          )}
-          {task.recurring && (
-            <Badge variant="secondary" className="text-xs gap-1">
-              <RefreshCw className="size-3" />{RECURRING_CONFIG[task.recurring]}
-            </Badge>
-          )}
-        </div>
-        <Button variant="ghost" size="icon" className="size-7 hover:text-destructive" onClick={handleDelete}>
-          <Trash2 className="size-3.5" />
-        </Button>
+        )}
+        {task.recurring && (
+          <Badge variant="secondary" className="text-xs gap-1">
+            <RefreshCw className="size-3" />{RECURRING_CONFIG[task.recurring]}
+          </Badge>
+        )}
       </div>
 
       <ScrollArea className="flex-1">
         <div className="flex flex-col gap-5 px-5 py-4">
 
-          {/* Title */}
+          {/* Title + lixeira na mesma linha */}
+          <div className="flex items-start gap-2">
           <input
-            className="text-xl font-bold bg-transparent border-none outline-none w-full leading-snug placeholder:text-muted-foreground"
+            className="text-xl font-bold bg-transparent border-none outline-none flex-1 leading-snug placeholder:text-muted-foreground"
             value={title}
             onChange={e => setTitle(e.target.value)}
             onBlur={saveTitle}
             onKeyDown={e => e.key === "Enter" && e.currentTarget.blur()}
             placeholder="Título da tarefa"
           />
+          <Button variant="ghost" size="icon" className="size-8 shrink-0 hover:text-destructive mt-0.5" onClick={handleDelete} title="Excluir tarefa">
+            <Trash2 className="size-4" />
+          </Button>
+          </div>
 
           {/* Properties — vertical list, sem truncamento */}
           <div className="rounded-lg border divide-y text-sm">

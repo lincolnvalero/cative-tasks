@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { TaskDialog } from "@/components/TaskDialog"
 import { ProjectIcon } from "@/components/ProjectIcon"
 import {
-  Pencil, Trash2, Search, Flag, ArrowUpDown,
+  Trash2, Search, Flag, ArrowUpDown,
   CheckCircle2, Circle, Plus, RefreshCw, Bookmark, X, Check,
   GripVertical, CalendarDays, Loader2,
 } from "lucide-react"
@@ -152,22 +152,23 @@ function TaskRow({
         ref={dragRef}
         style={dragStyle}
         className={cn(
-          "hover:bg-muted/20 transition-colors",
+          "hover:bg-muted/20 transition-colors cursor-pointer",
           overdue && "bg-red-500/5",
           selected && "bg-primary/5",
           isDragging && "opacity-50 bg-muted/30",
           "border-b last:border-0"
         )}
+        onClick={() => onOpenTask(task)}
       >
         {/* Drag handle */}
-        <td className="px-2 py-3 w-7">
+        <td className="px-2 py-3 w-7" onClick={e => e.stopPropagation()}>
           <button {...dragHandleProps} className="cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground touch-none">
             <GripVertical className="size-3.5" />
           </button>
         </td>
         {/* Checkbox */}
-        <td className="px-2 py-3 w-8">
-          <input type="checkbox" checked={selected} onChange={onToggleSelect} onClick={e => e.stopPropagation()} className="rounded" />
+        <td className="px-2 py-3 w-8" onClick={e => e.stopPropagation()}>
+          <input type="checkbox" checked={selected} onChange={onToggleSelect} className="rounded" />
         </td>
         {/* Title — permite quebra de linha, sem truncate */}
         <td className="px-2 py-2 cursor-pointer min-w-0" onClick={() => onOpenTask(task)}>
@@ -234,7 +235,7 @@ function TaskRow({
           </div>
         </td>
         {/* Status — inline select */}
-        <td className="px-2 py-3 hidden sm:table-cell w-36">
+        <td className="px-2 py-3 hidden sm:table-cell w-36" onClick={e => e.stopPropagation()}>
           <Select value={task.status} onValueChange={v => {
             moveTask(task.id, v as Status)
             toast.success(`Status: ${STATUS_CONFIG[v as Status].label}`)
@@ -291,15 +292,10 @@ function TaskRow({
           </div>
         </td>
         {/* Actions */}
-        <td className="px-2 py-3 w-16">
-          <div className="flex items-center gap-0.5">
-            <Button variant="ghost" size="icon" className="size-7" onClick={() => onOpenTask(task)}>
-              <Pencil className="size-3.5" />
-            </Button>
-            <Button variant="ghost" size="icon" className="size-7 hover:text-destructive" onClick={handleDelete}>
-              <Trash2 className="size-3.5" />
-            </Button>
-          </div>
+        <td className="px-2 py-3 w-10" onClick={e => e.stopPropagation()}>
+          <Button variant="ghost" size="icon" className="size-7 hover:text-destructive" onClick={handleDelete}>
+            <Trash2 className="size-3.5" />
+          </Button>
         </td>
       </tr>
     </>
@@ -355,7 +351,7 @@ function InlineAddRow({ activeProjectId, defaultProjectId }: { activeProjectId: 
   if (!active) {
     return (
       <tr>
-        <td colSpan={9} className="px-4 py-2">
+        <td colSpan={8} className="px-4 py-2">
           <button onClick={activate} className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full py-1">
             <Plus className="size-3.5" /> Adicionar tarefa <span className="text-muted-foreground/50 text-[10px]">(cole texto com múltiplas linhas para criar várias)</span>
           </button>
@@ -366,7 +362,7 @@ function InlineAddRow({ activeProjectId, defaultProjectId }: { activeProjectId: 
 
   return (
     <tr className="border-t">
-      <td colSpan={9} className="px-4 py-2">
+      <td colSpan={8} className="px-4 py-2">
         <div className="flex items-center gap-2">
           <Circle className="size-4 text-muted-foreground shrink-0" />
           <input
@@ -585,7 +581,7 @@ export function ListView({ onOpenTask, appliedView }: ListViewProps) {
                   <tbody>
                     {filtered.length === 0 && (
                       <tr>
-                        <td colSpan={9} className="text-center py-10 text-muted-foreground text-sm">Nenhuma tarefa encontrada</td>
+                        <td colSpan={8} className="text-center py-10 text-muted-foreground text-sm">Nenhuma tarefa encontrada</td>
                       </tr>
                     )}
                     {filtered.map(task => (
