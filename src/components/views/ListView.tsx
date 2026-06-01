@@ -453,9 +453,10 @@ interface ListViewProps {
   onOpenTask: (task: Task) => void
   appliedView?: SavedView | null
   todayFilter?: boolean
+  noDueDateFilter?: boolean
 }
 
-export function ListView({ onOpenTask, appliedView, todayFilter = false }: ListViewProps) {
+export function ListView({ onOpenTask, appliedView, todayFilter = false, noDueDateFilter = false }: ListViewProps) {
   const { tasks, projects, deleteTasks, updateTasks, activeProjectId, addSavedView, reorderTasks } = useApp()
   const [newOpen, setNewOpen] = useState(false)
   const [search, setSearch] = useState(appliedView?.filters.search ?? "")
@@ -475,11 +476,15 @@ export function ListView({ onOpenTask, appliedView, todayFilter = false }: ListV
   const filtered = tasks
     .filter(t => {
       if (todayFilter) {
-        // Show only tasks due today or overdue, and not done
         if (t.status === "done") return false
         if (!t.dueDate) return false
         const dueDate = parseISO(t.dueDate)
         if (!(isPast(dueDate) || isToday(dueDate))) return false
+      }
+      if (noDueDateFilter) {
+        // Sem prazo: ativas sem dueDate
+        if (t.status === "done") return false
+        if (t.dueDate) return false
       }
       if (activeProjectId && t.projectId !== activeProjectId) return false
       if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false

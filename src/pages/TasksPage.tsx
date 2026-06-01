@@ -24,6 +24,10 @@ export function TasksPage({ onOpenTask, newTaskOpen = false, onNewTaskClose }: P
   const [localNewOpen, setLocalNewOpen] = useState(false)
   const [activeViewId, setActiveViewId] = useState<string | null>(null)
   const [todayFilter, setTodayFilter] = useState(false)
+  const [noDueDateFilter, setNoDueDateFilter] = useState(false)
+
+  // Contagem para os chips
+  const noDueDateCount = tasks.filter(t => !t.dueDate && t.status !== "done").length
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<"kanban" | "list" | "calendar" | "workload">(
     () => (localStorage.getItem("cative-active-tab") as "kanban" | "list" | "calendar" | "workload") || "kanban"
@@ -99,18 +103,33 @@ export function TasksPage({ onOpenTask, newTaskOpen = false, onNewTaskClose }: P
         {/* Saved views quick-access */}
         {(savedViews.length > 0 || true) && (
           <div className="flex gap-1.5 flex-wrap">
+            {/* Chip: Todas */}
             <button
-              onClick={() => { setTodayFilter(!todayFilter); setActiveViewId(null) }}
-              className={cn("text-xs px-3 py-1 rounded-full border transition-colors", todayFilter ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted")}
-            >
-              📅 Hoje
-            </button>
-            <button
-              onClick={() => { setTodayFilter(false); setActiveViewId(null) }}
-              className={cn("text-xs px-3 py-1 rounded-full border transition-colors", !todayFilter && !activeViewId ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted")}
+              onClick={() => { setTodayFilter(false); setNoDueDateFilter(false); setActiveViewId(null) }}
+              className={cn("text-xs px-3 py-1 rounded-full border transition-colors", !todayFilter && !noDueDateFilter && !activeViewId ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted")}
             >
               Todas
             </button>
+            {/* Chip: Hoje */}
+            <button
+              onClick={() => { setTodayFilter(!todayFilter); setNoDueDateFilter(false); setActiveViewId(null); handleTabChange("list") }}
+              className={cn("text-xs px-3 py-1 rounded-full border transition-colors", todayFilter ? "bg-yellow-500 text-white border-yellow-500" : "border-border hover:bg-muted")}
+            >
+              📅 Hoje
+            </button>
+            {/* Chip: Sem prazo */}
+            {noDueDateCount > 0 && (
+              <button
+                onClick={() => { setNoDueDateFilter(!noDueDateFilter); setTodayFilter(false); setActiveViewId(null); handleTabChange("list") }}
+                className={cn("text-xs px-3 py-1 rounded-full border transition-colors flex items-center gap-1", noDueDateFilter ? "bg-orange-500 text-white border-orange-500" : "border-orange-300 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950/20")}
+                title={`${noDueDateCount} tarefa${noDueDateCount > 1 ? "s" : ""} sem prazo definido`}
+              >
+                📭 Sem prazo
+                <span className={cn("text-[10px] font-bold px-1 rounded-full", noDueDateFilter ? "bg-white/20" : "bg-orange-100 text-orange-700 dark:bg-orange-900/30")}>
+                  {noDueDateCount}
+                </span>
+              </button>
+            )}
             {savedViews.map(view => (
               <div key={view.id} className="flex items-center">
                 <button
@@ -157,7 +176,7 @@ export function TasksPage({ onOpenTask, newTaskOpen = false, onNewTaskClose }: P
           </TabsContent>
 
           <TabsContent value="list" className="mt-3">
-            <ListView onOpenTask={onOpenTask} appliedView={appliedView} todayFilter={todayFilter} />
+            <ListView onOpenTask={onOpenTask} appliedView={appliedView} todayFilter={todayFilter} noDueDateFilter={noDueDateFilter} />
           </TabsContent>
 
           <TabsContent value="calendar" className="mt-3" style={{ height: "calc(100vh - 240px)" }}>
