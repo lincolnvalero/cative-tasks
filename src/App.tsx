@@ -7,6 +7,7 @@ import { TasksPage } from "@/pages/TasksPage"
 import { ProjectsPage } from "@/pages/ProjectsPage"
 import { TaskDetailSheet } from "@/components/TaskDetailSheet"
 import { CommandPalette } from "@/components/CommandPalette"
+import { ConfirmDialogProvider } from "@/components/ConfirmDialog"
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar"
 import { TooltipProvider, Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { Button } from "@/components/ui/button"
@@ -117,6 +118,7 @@ function AppInner() {
         onNewTask={() => { setPage("tasks"); setNewTaskOpen(true) }}
         setActiveProjectId={setActiveProjectId}
       />
+      <ConfirmDialogProvider />
     </SidebarProvider>
   )
 }

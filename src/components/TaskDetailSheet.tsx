@@ -14,6 +14,7 @@ import { STATUS_CONFIG, PRIORITY_CONFIG, RECURRING_CONFIG } from "@/types/task"
 import { ProjectIcon } from "@/components/ProjectIcon"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
+import { showConfirm } from "@/components/ConfirmDialog"
 import {
   Trash2, Flag, CheckSquare, MessageSquare,
   Activity, Plus, X, Send, Check, RefreshCw,
@@ -114,8 +115,14 @@ function TaskDetailContent({ task, onClose }: { task: Task; onClose: () => void 
     setNewChecklistText("")
   }
 
-  function handleDelete() {
-    if (confirm(`Excluir "${task.title}"?`)) {
+  async function handleDelete() {
+    const ok = await showConfirm({
+      title: `Excluir "${task.title}"?`,
+      description: "Esta ação não pode ser desfeita.",
+      confirmLabel: "Excluir",
+      variant: "destructive",
+    })
+    if (ok) {
       deleteTask(task.id)
       toast.success("Tarefa excluída")
       onClose()

@@ -2,6 +2,8 @@ import { type ReactNode } from "react"
 import { useApp } from "@/context/AppContext"
 import type { Task } from "@/types/task"
 import { Pencil, Trash2 } from "lucide-react"
+import { showConfirm } from "@/components/ConfirmDialog"
+import { toast } from "sonner"
 
 interface Props {
   task: Task
@@ -11,6 +13,17 @@ interface Props {
 
 export function TaskContextMenu({ task, onEdit, children }: Props) {
   const { deleteTask } = useApp()
+
+  async function handleDelete(e: React.MouseEvent) {
+    e.stopPropagation()
+    const ok = await showConfirm({
+      title: `Excluir "${task.title}"?`,
+      description: "Esta ação não pode ser desfeita.",
+      confirmLabel: "Excluir",
+      variant: "destructive",
+    })
+    if (ok) { deleteTask(task.id); toast.success("Tarefa excluída") }
+  }
 
   return (
     <div className="group relative">
@@ -28,7 +41,7 @@ export function TaskContextMenu({ task, onEdit, children }: Props) {
         </button>
         <button
           className="size-6 flex items-center justify-center rounded bg-background border hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-          onClick={() => { if (confirm("Excluir tarefa?")) deleteTask(task.id) }}
+          onClick={handleDelete}
           title="Excluir"
         >
           <Trash2 className="size-3" />

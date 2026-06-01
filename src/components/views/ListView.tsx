@@ -27,6 +27,7 @@ import {
 import { ptBR } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
+import { showConfirm } from "@/components/ConfirmDialog"
 
 type SortKey = "title" | "status" | "priority" | "dueDate" | "createdAt"
 const PRIORITY_ORDER: Record<Priority, number> = { urgent: 4, high: 3, medium: 2, low: 1, none: 0 }
@@ -122,8 +123,9 @@ function TaskRow({
     if (!saving) setSavingDate(false)
   }, [saving])
 
-  function handleDelete() {
-    if (confirm(`Excluir "${task.title}"?`)) { deleteTask(task.id); toast.success("Tarefa excluída") }
+  async function handleDelete() {
+    const ok = await showConfirm({ title: `Excluir "${task.title}"?`, description: "Esta ação não pode ser desfeita.", confirmLabel: "Excluir", variant: "destructive" })
+    if (ok) { deleteTask(task.id); toast.success("Tarefa excluída") }
   }
 
   function handleToggleDone(e: React.MouseEvent) {
@@ -473,8 +475,9 @@ export function ListView({ onOpenTask, appliedView }: ListViewProps) {
 
   function toggleSelect(id: string) { setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]) }
 
-  function handleBulkDelete() {
-    if (confirm(`Excluir ${selected.length} tarefas?`)) {
+  async function handleBulkDelete() {
+    const ok = await showConfirm({ title: `Excluir ${selected.length} tarefas?`, description: "Esta ação não pode ser desfeita.", confirmLabel: "Excluir todas", variant: "destructive" })
+    if (ok) {
       deleteTasks(selected); setSelected([])
       toast.success(`${selected.length} tarefas excluídas`)
     }

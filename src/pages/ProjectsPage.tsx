@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { ProjectIcon, PROJECT_ICONS } from "@/components/ProjectIcon"
+import { showConfirm } from "@/components/ConfirmDialog"
 import { Plus, Pencil, Trash2, CheckCircle2, Clock } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
@@ -44,12 +45,17 @@ export function ProjectsPage() {
     setDialogOpen(false)
   }
 
-  function handleDelete(project: Project) {
+  async function handleDelete(project: Project) {
     const count = tasks.filter(t => t.projectId === project.id).length
-    const msg = count > 0
-      ? `Excluir "${project.name}"? Isso também excluirá ${count} tarefa${count > 1 ? "s" : ""} vinculada${count > 1 ? "s" : ""}.`
-      : `Excluir "${project.name}"?`
-    if (confirm(msg)) {
+    const ok = await showConfirm({
+      title: `Excluir "${project.name}"?`,
+      description: count > 0
+        ? `Isso também excluirá ${count} tarefa${count > 1 ? "s" : ""} vinculada${count > 1 ? "s" : ""} a este projeto.`
+        : "Esta ação não pode ser desfeita.",
+      confirmLabel: "Excluir",
+      variant: "destructive",
+    })
+    if (ok) {
       deleteProject(project.id)
       toast.success("Projeto excluído")
     }

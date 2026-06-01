@@ -1,83 +1,64 @@
-import { useState, useCallback } from "react"
+import { useState } from "react"
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { buttonVariants } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 
-interface ConfirmDialogProps {
-  open: boolean
+interface ConfirmOptions {
   title: string
-  description: string
-  onConfirm: () => void
-  onCancel: () => void
+  description?: string
+  confirmLabel?: string
   variant?: "default" | "destructive"
 }
 
-export function ConfirmDialog({
-  open,
-  title,
-  description,
-  onConfirm,
-  onCancel,
-  variant = "default",
-}: ConfirmDialogProps) {
+interface ConfirmState extends ConfirmOptions {
+  open: boolean
+  resolve: (value: boolean) => void
+}
+
+let _setState: ((s: ConfirmState | null) => void) | null = null
+
+/** Use instead of window.confirm() — returns a Promise<boolean> */
+export function showConfirm(opts: ConfirmOptions): Promise<boolean> {
+  return new Promise(resolve => {
+    _setState?.({ ...opts, open: true, resolve })
+  })
+}
+
+/** Mount once inside App root */
+export function ConfirmDialogProvider() {
+  const [state, setState] = useState<ConfirmState | null>(null)
+  _setState = setState
+
+  function close(result: boolean) {
+    state?.resolve(result)
+    setState(null)
+  }
+
+  if (!state) return null
+
   return (
-    <AlertDialog open={open} onOpenChange={v => !v && onCancel()}>
+    <AlertDialog open={state.open} onOpenChange={open => !open && close(false)}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>{title}</AlertDialogTitle>
-          <AlertDialogDescription>{description}</AlertDialogDescription>
+          <AlertDialogTitle>{state.title}</AlertDialogTitle>
+          {state.description && (
+            <AlertDialogDescription>{state.description}</AlertDialogDescription>
+          )}
         </AlertDialogHeader>
-        <div className="flex justify-end gap-2">
-          <AlertDialogCancel onClick={onCancel}>Cancelar</AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm} className={variant === "destructive" ? "bg-destructive hover:bg-destructive/90" : undefined}>
-            Confirmar
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={() => close(false)}>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => close(true)}
+            className={cn(state.variant === "destructive" && buttonVariants({ variant: "destructive" }))}
+          >
+            {state.confirmLabel ?? "Confirmar"}
           </AlertDialogAction>
-        </div>
+        </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   )
-}
-
-interface UseConfirmReturn {
-  confirm: (opts: ConfirmDialogProps & { onConfirm: () => void; onCancel?: () => void }) => void
-  ConfirmDialogComponent: React.FC
-}
-
-export function useConfirm(): UseConfirmReturn {
-  const [state, setState] = useState<Omit<ConfirmDialogProps, "onCancel"> & { onConfirm: () => void } | null>(null)
-
-  const confirm = useCallback((opts: ConfirmDialogProps & { onConfirm: () => void; onCancel?: () => void }) => {
-    setState({
-      open: true,
-      title: opts.title,
-      description: opts.description,
-      onConfirm: () => {
-        opts.onConfirm()
-        setState(null)
-      },
-      variant: opts.variant,
-    })
-  }, [])
-
-  const ConfirmDialogComponent = () => {
-    if (!state) return null
-    return (
-      <ConfirmDialog
-        open={true}
-        title={state.title}
-        description={state.description}
-        onConfirm={state.onConfirm}
-        onCancel={() => setState(null)}
-        variant={state.variant}
-      />
-    )
-  }
-
-  return { confirm, ConfirmDialogComponent }
 }
