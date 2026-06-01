@@ -75,43 +75,51 @@ export function DashboardPage() {
 
       // 2. Importar tarefas com projectId mapeado
       let imported = 0
+      const errors: string[] = []
+
       for (let i = 0; i < localTasks.length; i++) {
         const lt = localTasks[i]
         toast.info(`Importando tarefa ${i + 1} de ${localTasks.length}...`)
 
-        // Resolver projectId: usar mapeamento ou fallback para primeiro projeto
         const resolvedProjectId = projectIdMap[lt.projectId] || projects[0]?.id || ''
 
-        const newTask = await addTask({
-          title: lt.title,
-          description: lt.description || '',
-          status: lt.status,
-          priority: lt.priority,
-          projectId: resolvedProjectId,
-          dueDate: lt.dueDate,
-          tags: lt.tags || [],
-          recurring: lt.recurring ?? null,
-          position: i,
-        })
+        try {
+          const newTask = await addTask({
+            title: lt.title,
+            description: lt.description || '',
+            status: lt.status,
+            priority: lt.priority,
+            projectId: resolvedProjectId,
+            dueDate: lt.dueDate,
+            tags: lt.tags || [],
+            recurring: lt.recurring ?? null,
+            position: i,
+          })
 
-        if (newTask) {
+          if (!newTask) throw new Error(`Falha ao criar "${lt.title}"`)
+
           imported++
           if (lt.checklist?.length) {
-            for (const item of lt.checklist) {
-              await addChecklistItem(newTask.id, item.text)
-            }
+            for (const item of lt.checklist) await addChecklistItem(newTask.id, item.text)
           }
           if (lt.comments?.length) {
-            for (const c of lt.comments) {
-              await addComment(newTask.id, c.text)
-            }
+            for (const c of lt.comments) await addComment(newTask.id, c.text)
           }
+        } catch (e) {
+          errors.push(lt.title)
+          console.error('Erro ao importar tarefa:', lt.title, e)
         }
       }
 
-      localStorage.removeItem('cative-tasks')
-      setLocalTasks([])
-      toast.success(`✅ ${imported} tarefas importadas com sucesso!`)
+      // Só limpa localStorage se TODAS importaram com sucesso
+      if (errors.length === 0) {
+        localStorage.removeItem('cative-tasks')
+        setLocalTasks([])
+        toast.success(`✅ ${imported} tarefas importadas com sucesso!`)
+      } else {
+        toast.error(`⚠️ ${errors.length} tarefa(s) falharam: ${errors.slice(0,3).join(', ')}`)
+        if (imported > 0) toast.success(`${imported} tarefas importadas.`)
+      }
     } catch (error) {
       console.error('Erro ao importar:', error)
       toast.error(`Erro ao importar: ${error instanceof Error ? error.message : 'Tente novamente'}`)
