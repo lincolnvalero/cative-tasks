@@ -67,7 +67,7 @@ export const PRIORITY_CONFIG: Record<Priority, { label: string; color: string }>
   low:    { label: "Baixa",          color: "text-blue-400" },
   medium: { label: "Média",          color: "text-yellow-400" },
   high:   { label: "Alta",           color: "text-orange-400" },
-  urgent: { label: "Urgente",        color: "text-red-500" },
+  urgent: { label: "Crítica",        color: "text-red-500" },
 }
 
 export const RECURRING_CONFIG: Record<NonNullable<Recurring>, string> = {

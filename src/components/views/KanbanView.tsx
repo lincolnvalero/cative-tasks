@@ -114,14 +114,16 @@ function KanbanCard({ task, onOpenTask }: { task: Task; onOpenTask: (t: Task) =>
       draggable
       onDragStart={e => e.dataTransfer.setData("taskId", task.id)}
     >
-      <div className="flex items-start gap-2">
+      <div className="flex items-start gap-2 min-w-0">
         <button onClick={toggleDone} className="mt-0.5 shrink-0 text-muted-foreground hover:text-primary transition-colors">
           {isDone ? <CheckCircle2 className="size-4 text-green-500" /> : <Circle className="size-4" />}
         </button>
-        <p className={cn("text-sm font-medium leading-snug flex-1", isDone && "line-through")}>{task.title}</p>
-        {task.recurring && (
-          <RefreshCw className="size-3 text-muted-foreground shrink-0 mt-0.5" aria-label="Recorrente" />
-        )}
+        <div className="flex-1 min-w-0 flex items-start gap-1">
+          <p className={cn("text-sm font-medium leading-snug break-words min-w-0 flex-1", isDone && "line-through")}>{task.title}</p>
+          {task.recurring && (
+            <RefreshCw className="size-3 text-muted-foreground shrink-0 mt-0.5" aria-label="Recorrente" />
+          )}
+        </div>
       </div>
 
       <div className="flex items-center justify-between pl-6">

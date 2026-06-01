@@ -20,11 +20,7 @@ import {
   CheckCircle2, Circle, Plus, RefreshCw, Bookmark, X, Check,
   GripVertical, CalendarDays, Loader2,
 } from "lucide-react"
-import {
-  format, isPast, isToday, parseISO,
-  startOfMonth, endOfMonth, differenceInDays,
-} from "date-fns"
-import { ptBR } from "date-fns/locale"
+import { isPast, isToday, parseISO } from "date-fns"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { showConfirm } from "@/components/ConfirmDialog"
@@ -32,52 +28,6 @@ import { showConfirm } from "@/components/ConfirmDialog"
 type SortKey = "title" | "status" | "priority" | "dueDate" | "createdAt"
 const PRIORITY_ORDER: Record<Priority, number> = { urgent: 4, high: 3, medium: 2, low: 1, none: 0 }
 const STATUS_ORDER: Record<Status, number> = { todo: 0, "in-progress": 1, review: 2, done: 3 }
-
-const STATUS_COLORS: Record<Status, string> = {
-  todo: "#3b82f6",
-  "in-progress": "#f59e0b",
-  review: "#a855f7",
-  done: "#22c55e",
-}
-
-// ─── Mini Gantt ────────────────────────────────────────────────────────────────
-function MiniGantt({ task }: { task: Task }) {
-  const now = new Date()
-  const monthStart = startOfMonth(now)
-  const monthEnd = endOfMonth(now)
-  const totalDays = differenceInDays(monthEnd, monthStart) + 1
-  const todayPct = Math.min(100, Math.max(0, (differenceInDays(now, monthStart) / totalDays) * 100))
-
-  const hasDue = !!task.dueDate
-  let barLeft = 0, barWidth = 0
-
-  if (hasDue) {
-    const created = parseISO(task.createdAt.slice(0, 10))
-    const due = parseISO(task.dueDate!)
-    const s = Math.max(0, differenceInDays(created, monthStart))
-    const e = Math.min(totalDays, differenceInDays(due, monthStart) + 1)
-    barLeft = Math.max(0, (s / totalDays) * 100)
-    barWidth = Math.max(2, ((e - s) / totalDays) * 100)
-    if (barLeft + barWidth > 100) barWidth = 100 - barLeft
-  }
-
-  const isDone = task.status === "done"
-  const overdue = hasDue && !isDone && isPast(parseISO(task.dueDate!)) && !isToday(parseISO(task.dueDate!))
-  const barColor = overdue ? "#ef4444" : STATUS_COLORS[task.status]
-
-  return (
-    <div className="relative w-20 h-3.5 bg-muted/40 rounded-full overflow-hidden" title={task.dueDate ? `Até ${format(parseISO(task.dueDate), "dd/MM", { locale: ptBR })}` : "Sem prazo"}>
-      {hasDue && (
-        <div
-          className="absolute top-0 h-full rounded-full transition-all opacity-70"
-          style={{ left: `${barLeft}%`, width: `${barWidth}%`, background: barColor }}
-        />
-      )}
-      {/* Today line */}
-      <div className="absolute top-0 h-full w-px bg-orange-400 opacity-80" style={{ left: `${todayPct}%` }} />
-    </div>
-  )
-}
 
 // ─── Sortable row ──────────────────────────────────────────────────────────────
 interface RowProps {
@@ -250,24 +200,31 @@ function TaskRow({
             </SelectContent>
           </Select>
         </td>
-        {/* Priority */}
-        <td className="px-2 py-3 hidden sm:table-cell w-24">
-          {task.priority !== "none" && (
-            <span className={cn("flex items-center gap-1 text-xs", priority.color)}>
-              <Flag className="size-3" /> {priority.label}
-            </span>
-          )}
+        {/* Priority — inline select */}
+        <td className="px-2 py-3 hidden sm:table-cell w-28" onClick={e => e.stopPropagation()}>
+          <Select value={task.priority} onValueChange={v => {
+            updateTask(task.id, { priority: v as Priority })
+            toast.success(`Prioridade: ${PRIORITY_CONFIG[v as Priority].label}`)
+          }}>
+            <SelectTrigger className={cn("h-7 text-xs border-0 shadow-none focus:ring-0 px-2 w-full", task.priority !== "none" ? priority.color : "text-muted-foreground/40")}>
+              <span className="flex items-center gap-1">
+                {task.priority !== "none" && <Flag className="size-3 shrink-0" />}
+                <SelectValue placeholder="—" />
+              </span>
+            </SelectTrigger>
+            <SelectContent>
+              {(Object.entries(PRIORITY_CONFIG) as [Priority, typeof PRIORITY_CONFIG[Priority]][]).map(([k, v]) => (
+                <SelectItem key={k} value={k} className={cn("text-xs", v.color)}>{v.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </td>
-        {/* Mini Gantt */}
-        <td className="px-2 py-3 hidden lg:table-cell w-28">
-          <MiniGantt task={task} />
-        </td>
-        {/* Project */}
-        <td className="px-2 py-3 hidden md:table-cell w-32">
+        {/* Project — 2 lines, no truncate */}
+        <td className="px-2 py-3 hidden md:table-cell w-36">
           {project && (
-            <span className="flex items-center gap-1.5 text-xs truncate">
-              <ProjectIcon iconKey={project.emoji} className="size-3.5 shrink-0" style={{ color: project.color }} />
-              <span className="truncate">{project.name}</span>
+            <span className="flex items-start gap-1.5 text-xs">
+              <ProjectIcon iconKey={project.emoji} className="size-3.5 shrink-0 mt-0.5" style={{ color: project.color }} />
+              <span className="whitespace-normal leading-snug">{project.name}</span>
             </span>
           )}
         </td>
@@ -567,15 +524,12 @@ export function ListView({ onOpenTask, appliedView }: ListViewProps) {
                     <tr className="border-b bg-muted/30">
                       <th className="w-7 px-2" />
                       <th className="w-8 px-2" />
-                      <th className="text-left px-2 py-2.5"><SortBtn k="title" label="Título" /></th>
+                      <th className="text-left px-2 py-2.5"><SortBtn k="title" label="Tarefa" /></th>
                       <th className="text-left px-2 py-2.5 hidden sm:table-cell w-36"><SortBtn k="status" label="Status" /></th>
-                      <th className="text-left px-2 py-2.5 hidden sm:table-cell w-24"><SortBtn k="priority" label="Prior." /></th>
-                      <th className="text-left px-2 py-2.5 hidden lg:table-cell w-28 text-xs text-muted-foreground font-medium">
-                        Gantt <span className="font-normal opacity-60 text-[10px]">{format(new Date(), "MMM", { locale: ptBR })}</span>
-                      </th>
-                      <th className="text-left px-2 py-2.5 hidden md:table-cell w-32">Projeto</th>
+                      <th className="text-left px-2 py-2.5 hidden sm:table-cell w-28"><SortBtn k="priority" label="Prioridade" /></th>
+                      <th className="text-left px-2 py-2.5 hidden md:table-cell w-36">Projeto</th>
                       <th className="text-left px-2 py-2.5 hidden lg:table-cell w-32"><SortBtn k="dueDate" label="Prazo" /></th>
-                      <th className="w-16" />
+                      <th className="w-10" />
                     </tr>
                   </thead>
                   <tbody>
