@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { AppProvider } from "@/context/AppContext"
 import { AppSidebar } from "@/components/AppSidebar"
 import { BottomNav } from "@/components/BottomNav"
@@ -8,14 +8,15 @@ import { ProjectsPage } from "@/pages/ProjectsPage"
 import { TaskDetailSheet } from "@/components/TaskDetailSheet"
 import { CommandPalette } from "@/components/CommandPalette"
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar"
-import { TooltipProvider } from "@/components/ui/tooltip"
+import { TooltipProvider, Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useTheme } from "@/components/theme-provider"
 import { useApp } from "@/context/AppContext"
-import { Toaster } from "sonner"
-import { Sun, Moon, Monitor, Search } from "lucide-react"
+import { Toaster, toast } from "sonner"
+import { Sun, Moon, Monitor, Search, Loader2 } from "lucide-react"
 import type { Task } from "@/types/task"
+import { isToday, parseISO } from "date-fns"
 
 type Page = "dashboard" | "tasks" | "projects"
 
@@ -31,12 +32,28 @@ function ThemeToggle() {
 }
 
 function AppInner() {
-  const { loading } = useApp()
+  const { loading, saving, setActiveProjectId, tasks } = useApp()
   const [page, setPage] = useState<Page>("dashboard")
   const [detailTask, setDetailTask] = useState<Task | null>(null)
   const [newTaskOpen, setNewTaskOpen] = useState(false)
 
   const PAGE_LABELS: Record<Page, string> = { dashboard: "Dashboard", tasks: "Tarefas", projects: "Projetos" }
+
+  // Check for tasks due today
+  useEffect(() => {
+    const notifiedKey = "cative-today-notification"
+    const already = sessionStorage.getItem(notifiedKey)
+    if (!already && tasks.length > 0) {
+      const dueTodayCount = tasks.filter(t => {
+        return t.dueDate && isToday(parseISO(t.dueDate)) && t.status !== "done"
+      }).length
+
+      if (dueTodayCount > 0) {
+        toast.info(`${dueTodayCount} tarefa${dueTodayCount > 1 ? 's' : ''} vence hoje!`)
+        sessionStorage.setItem(notifiedKey, "true")
+      }
+    }
+  }, [tasks])
 
   function triggerSearch() {
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true, bubbles: true }))
@@ -55,6 +72,14 @@ function AppInner() {
             <span className="hidden md:inline">Buscar</span>
             <kbd className="bg-muted px-1.5 py-0.5 rounded text-[10px] hidden md:inline">Ctrl K</kbd>
           </Button>
+          {saving && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Loader2 className="size-4 animate-spin text-muted-foreground" />
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Salvando...</TooltipContent>
+            </Tooltip>
+          )}
           <ThemeToggle />
         </header>
 
@@ -90,6 +115,7 @@ function AppInner() {
         onNavigate={setPage}
         onOpenTask={task => { setPage("tasks"); setDetailTask(task) }}
         onNewTask={() => { setPage("tasks"); setNewTaskOpen(true) }}
+        setActiveProjectId={setActiveProjectId}
       />
     </SidebarProvider>
   )

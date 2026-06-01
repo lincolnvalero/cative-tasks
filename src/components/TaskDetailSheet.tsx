@@ -30,7 +30,7 @@ interface Props {
 export function TaskDetailSheet({ task, onClose }: Props) {
   return (
     <Sheet open={!!task} onOpenChange={v => !v && onClose()}>
-      <SheetContent className="w-full sm:max-w-[580px] p-0 flex flex-col gap-0" side="right">
+      <SheetContent className="w-full sm:max-w-[580px] p-0 flex flex-col gap-0" side="right" data-vaul-drawer-direction="right">
         <SheetTitle className="sr-only">Detalhes da tarefa</SheetTitle>
         {task && <TaskDetailContent task={task} onClose={onClose} />}
       </SheetContent>

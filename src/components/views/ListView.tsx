@@ -1,4 +1,4 @@
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import {
   DndContext, closestCenter, PointerSensor, useSensor, useSensors,
   type DragEndEvent,
@@ -18,7 +18,7 @@ import { ProjectIcon } from "@/components/ProjectIcon"
 import {
   Pencil, Trash2, Search, Flag, ArrowUpDown,
   CheckCircle2, Circle, Plus, RefreshCw, Bookmark, X, Check,
-  ChevronRight, CheckSquare, GripVertical, CalendarDays,
+  ChevronRight, CheckSquare, GripVertical, CalendarDays, Loader2,
 } from "lucide-react"
 import {
   format, isPast, isToday, parseISO,
@@ -106,7 +106,8 @@ function TaskRow({
   dragHandleProps?: Record<string, unknown>
   isDragging?: boolean
 }) {
-  const { projects, deleteTask, moveTask, updateTask, addChecklistItem, toggleChecklistItem } = useApp()
+  const { projects, deleteTask, moveTask, updateTask, addChecklistItem, toggleChecklistItem, saving } = useApp()
+  const [savingDate, setSavingDate] = useState(false)
 
   const project = projects.find(p => p.id === task.projectId)
   const status = STATUS_CONFIG[task.status]
@@ -116,6 +117,10 @@ function TaskRow({
   const dueToday = task.dueDate && !isDone && isToday(parseISO(task.dueDate))
   const checklist = task.checklist ?? []
   const checklistDone = checklist.filter(i => i.done).length
+
+  useEffect(() => {
+    if (!saving) setSavingDate(false)
+  }, [saving])
 
   function handleDelete() {
     if (confirm(`Excluir "${task.title}"?`)) { deleteTask(task.id); toast.success("Tarefa excluída") }
@@ -129,6 +134,7 @@ function TaskRow({
 
   function handleDueDateChange(e: React.ChangeEvent<HTMLInputElement>) {
     e.stopPropagation()
+    setSavingDate(true)
     updateTask(task.id, { dueDate: e.target.value || null })
   }
 
@@ -225,7 +231,11 @@ function TaskRow({
         {/* Due date — inline input */}
         <td className="px-2 py-3 hidden lg:table-cell w-32" onClick={e => e.stopPropagation()}>
           <div className="flex items-center gap-1">
-            <CalendarDays className={cn("size-3 shrink-0", overdue ? "text-red-500" : dueToday ? "text-yellow-600" : "text-muted-foreground")} />
+            {savingDate ? (
+              <Loader2 className="size-3 shrink-0 animate-spin text-muted-foreground" />
+            ) : (
+              <CalendarDays className={cn("size-3 shrink-0", overdue ? "text-red-500" : dueToday ? "text-yellow-600" : "text-muted-foreground")} />
+            )}
             <input
               type="date"
               value={task.dueDate ?? ""}

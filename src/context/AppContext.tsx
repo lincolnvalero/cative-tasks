@@ -7,6 +7,7 @@ interface AppContextValue {
   projects: Project[]
   savedViews: SavedView[]
   loading: boolean
+  saving: boolean
   activeProjectId: string | null
   setActiveProjectId: (id: string | null) => void
   addTask: (task: Omit<Task, "id" | "createdAt" | "comments" | "checklist" | "activity">) => Promise<Task | undefined>

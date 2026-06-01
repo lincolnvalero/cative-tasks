@@ -9,14 +9,16 @@ import { STATUS_CONFIG, PRIORITY_CONFIG } from "@/types/task"
 import type { Task } from "@/types/task"
 import { Flag, LayoutDashboard, CheckSquare, FolderKanban, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { ProjectIcon } from "@/components/ProjectIcon"
 
 interface Props {
   onNavigate: (page: "dashboard" | "tasks" | "projects") => void
   onOpenTask: (task: Task) => void
   onNewTask: () => void
+  setActiveProjectId?: (id: string | null) => void
 }
 
-export function CommandPalette({ onNavigate, onOpenTask, onNewTask }: Props) {
+export function CommandPalette({ onNavigate, onOpenTask, onNewTask, setActiveProjectId }: Props) {
   const { tasks, projects } = useApp()
   const [open, setOpen] = useState(false)
 
@@ -76,6 +78,28 @@ export function CommandPalette({ onNavigate, onOpenTask, onNewTask }: Props) {
                 <FolderKanban className="size-4 text-muted-foreground" />
                 <span>Ir para Projetos</span>
               </CommandItem>
+            </CommandGroup>
+
+            <CommandSeparator />
+
+            <CommandGroup heading="Projetos">
+              {projects.map(p => {
+                const activeTassk = tasks.filter(t => t.projectId === p.id && t.status !== "done").length
+                return (
+                  <CommandItem
+                    key={p.id}
+                    onSelect={() => {
+                      setActiveProjectId?.(p.id)
+                      go("tasks")
+                    }}
+                    className="gap-2 cursor-pointer"
+                  >
+                    <ProjectIcon iconKey={p.emoji} style={{ color: p.color }} className="size-4" />
+                    <span className="flex-1">{p.name}</span>
+                    <span className="text-xs text-muted-foreground">{activeTassk} ativa</span>
+                  </CommandItem>
+                )
+              })}
             </CommandGroup>
 
             <CommandSeparator />

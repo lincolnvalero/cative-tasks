@@ -30,9 +30,12 @@ const emptyForm = {
 }
 
 export function TaskDialog({ open, onClose, task, defaultStatus }: TaskDialogProps) {
-  const { addTask, updateTask, projects, activeProjectId } = useApp()
+  const { addTask, updateTask, projects, activeProjectId, tasks } = useApp()
   const [form, setForm] = useState(emptyForm)
   const [tagInput, setTagInput] = useState("")
+
+  // Collect all unique tags from existing tasks for autocomplete
+  const allTags = Array.from(new Set(tasks.flatMap(t => t.tags)))
 
   useEffect(() => {
     if (task) {
@@ -160,12 +163,20 @@ export function TaskDialog({ open, onClose, task, defaultStatus }: TaskDialogPro
             <label className="text-xs text-muted-foreground">Tags</label>
             <div className="flex gap-2">
               <Input
+                list="tag-suggestions"
                 placeholder="Adicionar tag e pressionar Enter..."
                 value={tagInput}
                 onChange={e => setTagInput(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addTag() } }}
                 className="flex-1"
               />
+              <datalist id="tag-suggestions">
+                {allTags
+                  .filter(tag => !form.tags.includes(tag) && tag.toLowerCase().startsWith(tagInput.toLowerCase()))
+                  .map(tag => (
+                    <option key={tag} value={tag} />
+                  ))}
+              </datalist>
             </div>
             {form.tags.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-1">

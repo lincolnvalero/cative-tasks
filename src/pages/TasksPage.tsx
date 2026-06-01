@@ -20,11 +20,21 @@ export function TasksPage({ onOpenTask, newTaskOpen = false, onNewTaskClose }: P
   const { projects, activeProjectId, setActiveProjectId, savedViews, deleteSavedView } = useApp()
   const [localNewOpen, setLocalNewOpen] = useState(false)
   const [activeViewId, setActiveViewId] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<"kanban" | "list" | "calendar">(
+    () => (localStorage.getItem("cative-active-tab") as "kanban" | "list" | "calendar") || "kanban"
+  )
   const activeProject = projects.find(p => p.id === activeProjectId)
   const appliedView = savedViews.find(v => v.id === activeViewId) ?? null
 
   const isNewOpen = newTaskOpen || localNewOpen
   function closeNew() { setLocalNewOpen(false); onNewTaskClose?.() }
+
+  function handleTabChange(tab: string) {
+    if (tab === "kanban" || tab === "list" || tab === "calendar") {
+      setActiveTab(tab)
+      localStorage.setItem("cative-active-tab", tab)
+    }
+  }
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -91,7 +101,7 @@ export function TasksPage({ onOpenTask, newTaskOpen = false, onNewTaskClose }: P
           </div>
         )}
 
-        <Tabs defaultValue="kanban" className="flex-1 flex flex-col">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col">
           <TabsList className="w-fit">
             <TabsTrigger value="kanban" className="gap-1.5 text-xs sm:text-sm">
               <Kanban className="size-3.5" />
