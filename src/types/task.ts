@@ -31,6 +31,7 @@ export interface Task {
   tags: string[]
   createdAt: string
   recurring: Recurring
+  position: number
   comments: Comment[]
   checklist: ChecklistItem[]
   activity: ActivityEntry[]
@@ -97,7 +98,7 @@ export const DEFAULT_SAVED_VIEWS: SavedView[] = [
 
 const task = (overrides: Partial<Task> & Pick<Task, "id" | "title" | "status" | "priority" | "projectId">): Task => ({
   description: "", dueDate: null, tags: [], createdAt: "2026-05-28T10:00:00Z",
-  recurring: null, comments: [], checklist: [], activity: [{ id: "a1", text: "Tarefa criada", createdAt: "2026-05-28T10:00:00Z" }],
+  recurring: null, position: 0, comments: [], checklist: [], activity: [{ id: "a1", text: "Tarefa criada", createdAt: "2026-05-28T10:00:00Z" }],
   ...overrides,
 })
 

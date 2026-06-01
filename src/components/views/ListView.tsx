@@ -1,19 +1,29 @@
 import { useState, useRef } from "react"
+import {
+  DndContext, closestCenter, PointerSensor, useSensor, useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core"
+import {
+  SortableContext, verticalListSortingStrategy, useSortable, arrayMove,
+} from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
 import { useApp } from "@/context/AppContext"
 import type { Task, Status, Priority, SavedView } from "@/types/task"
 import { STATUS_CONFIG, PRIORITY_CONFIG } from "@/types/task"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { TaskDialog } from "@/components/TaskDialog"
 import { ProjectIcon } from "@/components/ProjectIcon"
 import {
-  Pencil, Trash2, Search, CalendarDays, Flag, ArrowUpDown,
+  Pencil, Trash2, Search, Flag, ArrowUpDown,
   CheckCircle2, Circle, Plus, RefreshCw, Bookmark, X, Check,
-  ChevronRight, CheckSquare,
+  ChevronRight, CheckSquare, GripVertical, CalendarDays,
 } from "lucide-react"
-import { format, isPast, isToday, parseISO } from "date-fns"
+import {
+  format, isPast, isToday, parseISO,
+  startOfMonth, endOfMonth, differenceInDays,
+} from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -22,40 +32,312 @@ type SortKey = "title" | "status" | "priority" | "dueDate" | "createdAt"
 const PRIORITY_ORDER: Record<Priority, number> = { urgent: 4, high: 3, medium: 2, low: 1, none: 0 }
 const STATUS_ORDER: Record<Status, number> = { todo: 0, "in-progress": 1, review: 2, done: 3 }
 
-interface ListViewProps {
-  onOpenTask: (task: Task) => void
-  appliedView?: SavedView | null
+const STATUS_COLORS: Record<Status, string> = {
+  todo: "#3b82f6",
+  "in-progress": "#f59e0b",
+  review: "#a855f7",
+  done: "#22c55e",
 }
 
-// ─── Inline add row ───────────────────────────────────────────────────────────
+// ─── Mini Gantt ────────────────────────────────────────────────────────────────
+function MiniGantt({ task }: { task: Task }) {
+  const now = new Date()
+  const monthStart = startOfMonth(now)
+  const monthEnd = endOfMonth(now)
+  const totalDays = differenceInDays(monthEnd, monthStart) + 1
+  const todayPct = Math.min(100, Math.max(0, (differenceInDays(now, monthStart) / totalDays) * 100))
+
+  const hasDue = !!task.dueDate
+  let barLeft = 0, barWidth = 0
+
+  if (hasDue) {
+    const created = parseISO(task.createdAt.slice(0, 10))
+    const due = parseISO(task.dueDate!)
+    const s = Math.max(0, differenceInDays(created, monthStart))
+    const e = Math.min(totalDays, differenceInDays(due, monthStart) + 1)
+    barLeft = Math.max(0, (s / totalDays) * 100)
+    barWidth = Math.max(2, ((e - s) / totalDays) * 100)
+    if (barLeft + barWidth > 100) barWidth = 100 - barLeft
+  }
+
+  const isDone = task.status === "done"
+  const overdue = hasDue && !isDone && isPast(parseISO(task.dueDate!)) && !isToday(parseISO(task.dueDate!))
+  const barColor = overdue ? "#ef4444" : STATUS_COLORS[task.status]
+
+  return (
+    <div className="relative w-20 h-3.5 bg-muted/40 rounded-full overflow-hidden" title={task.dueDate ? `Até ${format(parseISO(task.dueDate), "dd/MM", { locale: ptBR })}` : "Sem prazo"}>
+      {hasDue && (
+        <div
+          className="absolute top-0 h-full rounded-full transition-all opacity-70"
+          style={{ left: `${barLeft}%`, width: `${barWidth}%`, background: barColor }}
+        />
+      )}
+      {/* Today line */}
+      <div className="absolute top-0 h-full w-px bg-orange-400 opacity-80" style={{ left: `${todayPct}%` }} />
+    </div>
+  )
+}
+
+// ─── Sortable row ──────────────────────────────────────────────────────────────
+interface RowProps {
+  task: Task
+  onOpenTask: (t: Task) => void
+  selected: boolean
+  onToggleSelect: () => void
+  checklistOpen: boolean
+  onToggleChecklist: () => void
+  newChecklistText: string
+  onChecklistTextChange: (v: string) => void
+}
+
+function SortableRow(props: RowProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: props.task.id })
+  const style = { transform: CSS.Transform.toString(transform), transition }
+  return <TaskRow {...props} dragRef={setNodeRef} dragStyle={style} dragHandleProps={{ ...attributes, ...listeners }} isDragging={isDragging} />
+}
+
+function TaskRow({
+  task, onOpenTask, selected, onToggleSelect, checklistOpen, onToggleChecklist,
+  newChecklistText, onChecklistTextChange,
+  dragRef, dragStyle, dragHandleProps, isDragging,
+}: RowProps & {
+  dragRef?: (el: HTMLTableRowElement | null) => void
+  dragStyle?: React.CSSProperties
+  dragHandleProps?: Record<string, unknown>
+  isDragging?: boolean
+}) {
+  const { projects, deleteTask, moveTask, updateTask, addChecklistItem, toggleChecklistItem } = useApp()
+
+  const project = projects.find(p => p.id === task.projectId)
+  const status = STATUS_CONFIG[task.status]
+  const priority = PRIORITY_CONFIG[task.priority]
+  const isDone = task.status === "done"
+  const overdue = task.dueDate && !isDone && isPast(parseISO(task.dueDate)) && !isToday(parseISO(task.dueDate))
+  const dueToday = task.dueDate && !isDone && isToday(parseISO(task.dueDate))
+  const checklist = task.checklist ?? []
+  const checklistDone = checklist.filter(i => i.done).length
+
+  function handleDelete() {
+    if (confirm(`Excluir "${task.title}"?`)) { deleteTask(task.id); toast.success("Tarefa excluída") }
+  }
+
+  function handleToggleDone(e: React.MouseEvent) {
+    e.stopPropagation()
+    moveTask(task.id, isDone ? "todo" : "done")
+    toast.success(isDone ? "Tarefa reaberta" : "Tarefa concluída!")
+  }
+
+  function handleDueDateChange(e: React.ChangeEvent<HTMLInputElement>) {
+    e.stopPropagation()
+    updateTask(task.id, { dueDate: e.target.value || null })
+  }
+
+  function addChecklistItemLocal() {
+    const text = newChecklistText.trim()
+    if (!text) return
+    addChecklistItem(task.id, text)
+    onChecklistTextChange("")
+  }
+
+  return (
+    <>
+      <tr
+        ref={dragRef}
+        style={dragStyle}
+        className={cn(
+          "hover:bg-muted/20 transition-colors",
+          overdue && "bg-red-500/5",
+          selected && "bg-primary/5",
+          isDragging && "opacity-50 bg-muted/30",
+          checklistOpen ? "" : "border-b last:border-0"
+        )}
+      >
+        {/* Drag handle */}
+        <td className="px-2 py-3 w-7">
+          <button {...dragHandleProps} className="cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground touch-none">
+            <GripVertical className="size-3.5" />
+          </button>
+        </td>
+        {/* Checkbox */}
+        <td className="px-2 py-3 w-8">
+          <input type="checkbox" checked={selected} onChange={onToggleSelect} onClick={e => e.stopPropagation()} className="rounded" />
+        </td>
+        {/* Title */}
+        <td className="px-2 py-3 cursor-pointer min-w-0 w-[35%]" onClick={() => onOpenTask(task)}>
+          <div className="flex items-center gap-2 min-w-0">
+            <button
+              onClick={e => { e.stopPropagation(); onToggleChecklist() }}
+              className={cn("shrink-0 text-muted-foreground/40 hover:text-primary transition-colors", checklistOpen && "text-primary")}
+            >
+              <ChevronRight className={cn("size-3.5 transition-transform", checklistOpen && "rotate-90")} />
+            </button>
+            <button onClick={handleToggleDone} className="text-muted-foreground hover:text-primary shrink-0">
+              {isDone ? <CheckCircle2 className="size-4 text-green-500" /> : <Circle className="size-4" />}
+            </button>
+            <span className={cn("font-medium truncate text-sm", isDone && "line-through text-muted-foreground")}>
+              {task.title}
+            </span>
+            {task.recurring && <RefreshCw className="size-3 text-muted-foreground shrink-0" aria-label="Recorrente" />}
+            {checklist.length > 0 && (
+              <span className="text-xs text-muted-foreground flex items-center gap-0.5 shrink-0">
+                <CheckSquare className="size-3" />{checklistDone}/{checklist.length}
+              </span>
+            )}
+          </div>
+        </td>
+        {/* Status — inline select */}
+        <td className="px-2 py-3 hidden sm:table-cell w-36">
+          <Select value={task.status} onValueChange={v => {
+            moveTask(task.id, v as Status)
+            toast.success(`Status: ${STATUS_CONFIG[v as Status].label}`)
+          }}>
+            <SelectTrigger className={cn("h-7 text-xs border-0 shadow-none focus:ring-0 px-2 w-full", status.color, status.bg)}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {(Object.entries(STATUS_CONFIG) as [Status, typeof STATUS_CONFIG[Status]][]).map(([k, v]) => (
+                <SelectItem key={k} value={k} className="text-xs">{v.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </td>
+        {/* Priority */}
+        <td className="px-2 py-3 hidden sm:table-cell w-24">
+          {task.priority !== "none" && (
+            <span className={cn("flex items-center gap-1 text-xs", priority.color)}>
+              <Flag className="size-3" /> {priority.label}
+            </span>
+          )}
+        </td>
+        {/* Mini Gantt */}
+        <td className="px-2 py-3 hidden lg:table-cell w-28">
+          <MiniGantt task={task} />
+        </td>
+        {/* Project */}
+        <td className="px-2 py-3 hidden md:table-cell w-32">
+          {project && (
+            <span className="flex items-center gap-1.5 text-xs truncate">
+              <ProjectIcon iconKey={project.emoji} className="size-3.5 shrink-0" style={{ color: project.color }} />
+              <span className="truncate">{project.name}</span>
+            </span>
+          )}
+        </td>
+        {/* Due date — inline input */}
+        <td className="px-2 py-3 hidden lg:table-cell w-32" onClick={e => e.stopPropagation()}>
+          <div className="flex items-center gap-1">
+            <CalendarDays className={cn("size-3 shrink-0", overdue ? "text-red-500" : dueToday ? "text-yellow-600" : "text-muted-foreground")} />
+            <input
+              type="date"
+              value={task.dueDate ?? ""}
+              onChange={handleDueDateChange}
+              className={cn(
+                "text-xs bg-transparent outline-none w-24 cursor-pointer",
+                overdue ? "text-red-500 font-medium" : dueToday ? "text-yellow-600 font-medium" : "text-muted-foreground"
+              )}
+              title="Data de entrega"
+            />
+          </div>
+        </td>
+        {/* Actions */}
+        <td className="px-2 py-3 w-16">
+          <div className="flex items-center gap-0.5">
+            <Button variant="ghost" size="icon" className="size-7" onClick={() => onOpenTask(task)}>
+              <Pencil className="size-3.5" />
+            </Button>
+            <Button variant="ghost" size="icon" className="size-7 hover:text-destructive" onClick={handleDelete}>
+              <Trash2 className="size-3.5" />
+            </Button>
+          </div>
+        </td>
+      </tr>
+      {/* Checklist expand */}
+      {checklistOpen && (
+        <tr className={cn("bg-muted/10", checklistOpen && "border-b")}>
+          <td colSpan={9} className="px-4 py-2 pl-16">
+            <div className="flex flex-col gap-1">
+              {checklist.map(item => (
+                <button key={item.id} onClick={() => toggleChecklistItem(task.id, item.id)} className="flex items-center gap-2 text-left group w-full">
+                  <div className={cn("size-3.5 rounded border flex items-center justify-center shrink-0 transition-colors", item.done ? "bg-primary border-primary" : "border-muted-foreground/40 group-hover:border-primary")}>
+                    {item.done && <Check className="size-2 text-primary-foreground" />}
+                  </div>
+                  <span className={cn("text-xs", item.done && "line-through text-muted-foreground")}>{item.text}</span>
+                </button>
+              ))}
+              {checklist.length === 0 && <p className="text-xs text-muted-foreground">Nenhum subitem ainda.</p>}
+              <div className="flex items-center gap-2 mt-1">
+                <Plus className="size-3 text-muted-foreground shrink-0" />
+                <input
+                  className="text-xs bg-transparent outline-none flex-1 placeholder:text-muted-foreground border-b border-dashed border-muted-foreground/30 focus:border-primary pb-0.5"
+                  placeholder="Adicionar subitem… Enter"
+                  value={newChecklistText}
+                  onChange={e => onChecklistTextChange(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === "Enter" && newChecklistText.trim()) { addChecklistItemLocal(); }
+                    if (e.key === "Escape") onToggleChecklist()
+                  }}
+                  onClick={e => e.stopPropagation()}
+                />
+              </div>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
+  )
+}
+
+// ─── Inline add row ──────────────────────────────────────────────────────────
 function InlineAddRow({ activeProjectId, defaultProjectId }: { activeProjectId: string | null; defaultProjectId: string }) {
-  const { addTask } = useApp()
+  const { addTask, tasks } = useApp()
   const [active, setActive] = useState(false)
   const [title, setTitle] = useState("")
   const inputRef = useRef<HTMLInputElement>(null)
 
   function activate() { setActive(true); setTimeout(() => inputRef.current?.focus(), 30) }
 
-  function save() {
-    if (title.trim()) {
-      addTask({ title: title.trim(), description: "", status: "todo", priority: "none", projectId: activeProjectId ?? defaultProjectId, dueDate: null, tags: [], recurring: null })
-      toast.success("Tarefa criada")
+  async function save() {
+    if (!title.trim()) { setActive(false); return }
+    await addTask({
+      title: title.trim(), description: "", status: "todo", priority: "none",
+      projectId: activeProjectId ?? defaultProjectId, dueDate: null, tags: [], recurring: null,
+      position: tasks.length,
+    })
+    toast.success("Tarefa criada")
+    setTitle("")
+    inputRef.current?.focus()
+  }
+
+  function handlePaste(e: React.ClipboardEvent<HTMLInputElement>) {
+    const text = e.clipboardData.getData("text")
+    // Detect multi-line or bullet-list paste
+    const lines = text
+      .split(/\n/)
+      .map(l => l.replace(/^[\-\*\•\·\◦\▪\▸\>\d+[\.\)]\s*]+/, "").trim())
+      .filter(Boolean)
+
+    if (lines.length <= 1) return // normal paste, let default handle it
+
+    e.preventDefault()
+    ;(async () => {
+      for (let i = 0; i < lines.length; i++) {
+        await addTask({
+          title: lines[i], description: "", status: "todo", priority: "none",
+          projectId: activeProjectId ?? defaultProjectId, dueDate: null, tags: [], recurring: null,
+          position: tasks.length + i,
+        })
+      }
+      toast.success(`${lines.length} tarefas criadas!`)
       setTitle("")
-      inputRef.current?.focus()
-    } else {
       setActive(false)
-    }
+    })()
   }
 
   if (!active) {
     return (
       <tr>
-        <td colSpan={7} className="px-4 py-2">
-          <button
-            onClick={activate}
-            className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full py-1"
-          >
-            <Plus className="size-3.5" /> Adicionar tarefa
+        <td colSpan={9} className="px-4 py-2">
+          <button onClick={activate} className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full py-1">
+            <Plus className="size-3.5" /> Adicionar tarefa <span className="text-muted-foreground/50 text-[10px]">(cole texto com múltiplas linhas para criar várias)</span>
           </button>
         </td>
       </tr>
@@ -64,15 +346,16 @@ function InlineAddRow({ activeProjectId, defaultProjectId }: { activeProjectId: 
 
   return (
     <tr className="border-t">
-      <td className="px-4 py-2" colSpan={7}>
+      <td colSpan={9} className="px-4 py-2">
         <div className="flex items-center gap-2">
           <Circle className="size-4 text-muted-foreground shrink-0" />
           <input
             ref={inputRef}
             className="flex-1 text-sm bg-transparent outline-none placeholder:text-muted-foreground"
-            placeholder="Nome da tarefa… Enter para salvar, Esc para cancelar"
+            placeholder="Nome da tarefa… Enter para salvar · Cole múltiplas linhas para criar várias"
             value={title}
             onChange={e => setTitle(e.target.value)}
+            onPaste={handlePaste}
             onKeyDown={e => {
               if (e.key === "Enter") save()
               if (e.key === "Escape") { setTitle(""); setActive(false) }
@@ -86,7 +369,7 @@ function InlineAddRow({ activeProjectId, defaultProjectId }: { activeProjectId: 
   )
 }
 
-// ─── Bulk action bar ──────────────────────────────────────────────────────────
+// ─── Bulk action bar ─────────────────────────────────────────────────────────
 function BulkBar({ selected, onClear, onDelete, onChangeStatus, onChangePriority }: {
   selected: string[]
   onClear: () => void
@@ -99,29 +382,22 @@ function BulkBar({ selected, onClear, onDelete, onChangeStatus, onChangePriority
       <span className="text-sm font-medium text-muted-foreground mr-1">
         {selected.length} selecionada{selected.length > 1 ? "s" : ""}
       </span>
-
       <Select onValueChange={onChangeStatus}>
-        <SelectTrigger className="h-7 text-xs w-auto border-dashed gap-1">
-          <span>Status</span>
-        </SelectTrigger>
+        <SelectTrigger className="h-7 text-xs w-auto border-dashed gap-1"><span>Status</span></SelectTrigger>
         <SelectContent>
           {(Object.entries(STATUS_CONFIG) as [Status, typeof STATUS_CONFIG[Status]][]).map(([k, v]) => (
             <SelectItem key={k} value={k} className="text-xs">{v.label}</SelectItem>
           ))}
         </SelectContent>
       </Select>
-
       <Select onValueChange={onChangePriority}>
-        <SelectTrigger className="h-7 text-xs w-auto border-dashed gap-1">
-          <span>Prioridade</span>
-        </SelectTrigger>
+        <SelectTrigger className="h-7 text-xs w-auto border-dashed gap-1"><span>Prioridade</span></SelectTrigger>
         <SelectContent>
           {(Object.entries(PRIORITY_CONFIG) as [Priority, typeof PRIORITY_CONFIG[Priority]][]).map(([k, v]) => (
             <SelectItem key={k} value={k} className="text-xs">{v.label}</SelectItem>
           ))}
         </SelectContent>
       </Select>
-
       <Button size="sm" variant="destructive" className="h-7 text-xs" onClick={onDelete}>
         <Trash2 className="size-3" /> Excluir
       </Button>
@@ -133,15 +409,14 @@ function BulkBar({ selected, onClear, onDelete, onChangeStatus, onChangePriority
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
-export function ListView({ onOpenTask, appliedView }: ListViewProps) {
-  const { tasks, projects, deleteTask, deleteTasks, updateTasks, moveTask, activeProjectId, addSavedView, addChecklistItem, toggleChecklistItem } = useApp()
-  const [newOpen, setNewOpen] = useState(false)
-  const [expandedChecklist, setExpandedChecklist] = useState<Record<string, boolean>>({})
-  const [newChecklistItems, setNewChecklistItems] = useState<Record<string, string>>({})
+interface ListViewProps {
+  onOpenTask: (task: Task) => void
+  appliedView?: SavedView | null
+}
 
-  function toggleChecklist(id: string) {
-    setExpandedChecklist(prev => ({ ...prev, [id]: !prev[id] }))
-  }
+export function ListView({ onOpenTask, appliedView }: ListViewProps) {
+  const { tasks, projects, deleteTasks, updateTasks, activeProjectId, addSavedView, reorderTasks } = useApp()
+  const [newOpen, setNewOpen] = useState(false)
   const [search, setSearch] = useState(appliedView?.filters.search ?? "")
   const [filterStatus, setFilterStatus] = useState<string>(appliedView?.filters.status ?? "all")
   const [filterPriority, setFilterPriority] = useState<string>(appliedView?.filters.priority ?? "all")
@@ -149,6 +424,12 @@ export function ListView({ onOpenTask, appliedView }: ListViewProps) {
   const [sortKey, setSortKey] = useState<SortKey>("createdAt")
   const [sortAsc, setSortAsc] = useState(false)
   const [selected, setSelected] = useState<string[]>([])
+  const [expandedChecklist, setExpandedChecklist] = useState<Record<string, boolean>>({})
+  const [newChecklistItems, setNewChecklistItems] = useState<Record<string, string>>({})
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
+
+  const hasFilters = filterStatus !== "all" || filterPriority !== "all" || filterProject !== "all" || search
 
   const filtered = tasks
     .filter(t => {
@@ -165,37 +446,36 @@ export function ListView({ onOpenTask, appliedView }: ListViewProps) {
       else if (sortKey === "status") cmp = STATUS_ORDER[a.status] - STATUS_ORDER[b.status]
       else if (sortKey === "priority") cmp = PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]
       else if (sortKey === "dueDate") cmp = (a.dueDate ?? "9999") < (b.dueDate ?? "9999") ? -1 : 1
-      else cmp = a.createdAt < b.createdAt ? -1 : 1
-      return sortAsc ? cmp : -cmp
+      else cmp = (a.position ?? 0) - (b.position ?? 0)
+      return sortAsc ? cmp : (sortKey === "createdAt" ? 1 : -cmp)
     })
 
-  const allSelected = filtered.length > 0 && selected.length === filtered.length
-  function toggleSelectAll() { setSelected(allSelected ? [] : filtered.map(t => t.id)) }
+  const isDefaultSort = sortKey === "createdAt"
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const oldIndex = filtered.findIndex(t => t.id === active.id)
+    const newIndex = filtered.findIndex(t => t.id === over.id)
+    const reordered = arrayMove(filtered, oldIndex, newIndex)
+    reorderTasks(reordered.map(t => t.id))
+  }
+
   function toggleSelect(id: string) { setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]) }
-
-  function handleToggleDone(task: Task) {
-    moveTask(task.id, task.status === "done" ? "todo" : "done")
-    toast.success(task.status === "done" ? "Tarefa reaberta" : "Tarefa concluída!")
-  }
-
-  function handleDelete(task: Task) {
-    if (confirm(`Excluir "${task.title}"?`)) { deleteTask(task.id); toast.success("Tarefa excluída") }
-  }
 
   function handleBulkDelete() {
     if (confirm(`Excluir ${selected.length} tarefas?`)) {
-      deleteTasks(selected); setSelected([]); toast.success(`${selected.length} tarefas excluídas`)
+      deleteTasks(selected); setSelected([])
+      toast.success(`${selected.length} tarefas excluídas`)
     }
   }
 
   function handleBulkStatus(status: Status) {
-    updateTasks(selected, { status }); toast.success(`Status atualizado`)
-    setSelected([])
+    updateTasks(selected, { status }); toast.success("Status atualizado"); setSelected([])
   }
 
   function handleBulkPriority(priority: Priority) {
-    updateTasks(selected, { priority }); toast.success(`Prioridade atualizada`)
-    setSelected([])
+    updateTasks(selected, { priority }); toast.success("Prioridade atualizada"); setSelected([])
   }
 
   function handleSaveView() {
@@ -221,18 +501,15 @@ export function ListView({ onOpenTask, appliedView }: ListViewProps) {
     )
   }
 
-  const hasFilters = filterStatus !== "all" || filterPriority !== "all" || filterProject !== "all" || search
-
   return (
     <>
       <div className="flex flex-col gap-4">
-        {/* Filters bar */}
+        {/* Filters */}
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative flex-1 min-w-[160px]">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
             <Input placeholder="Buscar..." className="pl-8 h-8" value={search} onChange={e => setSearch(e.target.value)} />
           </div>
-
           <Select value={filterStatus} onValueChange={setFilterStatus}>
             <SelectTrigger className="w-32 h-8 text-xs"><SelectValue placeholder="Status" /></SelectTrigger>
             <SelectContent>
@@ -240,7 +517,6 @@ export function ListView({ onOpenTask, appliedView }: ListViewProps) {
               {Object.entries(STATUS_CONFIG).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
             </SelectContent>
           </Select>
-
           <Select value={filterPriority} onValueChange={setFilterPriority}>
             <SelectTrigger className="w-32 h-8 text-xs"><SelectValue placeholder="Prioridade" /></SelectTrigger>
             <SelectContent>
@@ -248,7 +524,6 @@ export function ListView({ onOpenTask, appliedView }: ListViewProps) {
               {Object.entries(PRIORITY_CONFIG).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
             </SelectContent>
           </Select>
-
           {!activeProjectId && (
             <Select value={filterProject} onValueChange={setFilterProject}>
               <SelectTrigger className="w-32 h-8 text-xs"><SelectValue placeholder="Projeto" /></SelectTrigger>
@@ -258,9 +533,8 @@ export function ListView({ onOpenTask, appliedView }: ListViewProps) {
               </SelectContent>
             </Select>
           )}
-
           {hasFilters && (
-            <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs" onClick={handleSaveView} title="Salvar filtro atual como view">
+            <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs" onClick={handleSaveView}>
               <Bookmark className="size-3.5" /> Salvar view
             </Button>
           )}
@@ -269,170 +543,57 @@ export function ListView({ onOpenTask, appliedView }: ListViewProps) {
         {/* Table */}
         <div className="rounded-xl border overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-muted/30">
-                  <th className="px-4 py-2.5 w-8">
-                    <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} className="rounded" />
-                  </th>
-                  <th className="text-left px-2 py-2.5 w-[38%]"><SortBtn k="title" label="Título" /></th>
-                  <th className="text-left px-3 py-2.5 hidden sm:table-cell"><SortBtn k="status" label="Status" /></th>
-                  <th className="text-left px-3 py-2.5 hidden sm:table-cell"><SortBtn k="priority" label="Prior." /></th>
-                  <th className="text-left px-3 py-2.5 hidden md:table-cell">Projeto</th>
-                  <th className="text-left px-3 py-2.5 hidden lg:table-cell"><SortBtn k="dueDate" label="Entrega" /></th>
-                  <th className="px-3 py-2.5 w-16" />
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="text-center py-10 text-muted-foreground text-sm">
-                      Nenhuma tarefa encontrada
-                    </td>
-                  </tr>
-                )}
-                {filtered.map(task => {
-                  const status = STATUS_CONFIG[task.status]
-                  const priority = PRIORITY_CONFIG[task.priority]
-                  const project = projects.find(p => p.id === task.projectId)
-                  const isDone = task.status === "done"
-                  const overdue = task.dueDate && !isDone && isPast(parseISO(task.dueDate)) && !isToday(parseISO(task.dueDate))
-                  const dueToday = task.dueDate && !isDone && isToday(parseISO(task.dueDate))
-                  const isChecked = selected.includes(task.id)
-                  const checklistOpen = !!expandedChecklist[task.id]
-                  const checklist = task.checklist ?? []
-                  const checklistDone = checklist.filter(i => i.done).length
-                  const newChecklistText = newChecklistItems[task.id] ?? ""
-                  return (
-                    <>
-                    <tr key={task.id} className={cn("hover:bg-muted/20 transition-colors", overdue && "bg-red-500/5", isChecked && "bg-primary/5", checklistOpen ? "" : "border-b last:border-0")}>
-                      <td className="px-4 py-3">
-                        <input type="checkbox" checked={isChecked} onChange={() => toggleSelect(task.id)} onClick={e => e.stopPropagation()} className="rounded" />
-                      </td>
-                      <td className="px-2 py-3 cursor-pointer" onClick={() => onOpenTask(task)}>
-                        <div className="flex items-center gap-2">
-                          {/* Expand checklist toggle */}
-                          <button
-                            onClick={e => { e.stopPropagation(); toggleChecklist(task.id) }}
-                            className={cn("shrink-0 text-muted-foreground/40 hover:text-primary transition-colors", checklistOpen && "text-primary")}
-                            title="Subitens"
-                          >
-                            <ChevronRight className={cn("size-3.5 transition-transform", checklistOpen && "rotate-90")} />
-                          </button>
-                          <button onClick={e => { e.stopPropagation(); handleToggleDone(task) }} className="text-muted-foreground hover:text-primary shrink-0">
-                            {isDone ? <CheckCircle2 className="size-4 text-green-500" /> : <Circle className="size-4" />}
-                          </button>
-                          <span className={cn("font-medium truncate", isDone && "line-through text-muted-foreground")}>
-                            {task.title}
-                          </span>
-                          {task.recurring && <RefreshCw className="size-3 text-muted-foreground shrink-0" aria-label="Recorrente" />}
-                          {checklist.length > 0 && (
-                            <span className="text-xs text-muted-foreground flex items-center gap-0.5 shrink-0">
-                              <CheckSquare className="size-3" />{checklistDone}/{checklist.length}
-                            </span>
-                          )}
-                        </div>
-                        {task.tags.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-1 ml-10">
-                            {task.tags.slice(0, 2).map(tag => (
-                              <Badge key={tag} variant="secondary" className="text-xs py-0 px-1.5">{tag}</Badge>
-                            ))}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-3 py-3 hidden sm:table-cell">
-                        <Badge variant="outline" className={cn("text-xs", status.color, status.bg)}>{status.label}</Badge>
-                      </td>
-                      <td className="px-3 py-3 hidden sm:table-cell">
-                        {task.priority !== "none" && (
-                          <span className={cn("flex items-center gap-1 text-xs", priority.color)}>
-                            <Flag className="size-3" /> {priority.label}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-3 py-3 hidden md:table-cell">
-                        {project && (
-                          <span className="flex items-center gap-1.5 text-xs">
-                            <ProjectIcon iconKey={project.emoji} className="size-3.5 shrink-0" style={{ color: project.color }} />
-                            {project.name}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-3 py-3 hidden lg:table-cell">
-                        {task.dueDate && (
-                          <span className={cn("flex items-center gap-1 text-xs",
-                            overdue ? "text-red-500 font-medium" : dueToday ? "text-yellow-600 font-medium" : "text-muted-foreground"
-                          )}>
-                            <CalendarDays className="size-3" />
-                            {format(parseISO(task.dueDate), "dd MMM", { locale: ptBR })}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-3 py-3">
-                        <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="icon" className="size-7" onClick={() => onOpenTask(task)}>
-                            <Pencil className="size-3.5" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="size-7 hover:text-destructive" onClick={() => handleDelete(task)}>
-                            <Trash2 className="size-3.5" />
-                          </Button>
-                        </div>
-                      </td>
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={isDefaultSort ? handleDragEnd : undefined}>
+              <SortableContext items={filtered.map(t => t.id)} strategy={verticalListSortingStrategy}>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/30">
+                      <th className="w-7 px-2" />
+                      <th className="w-8 px-2" />
+                      <th className="text-left px-2 py-2.5"><SortBtn k="title" label="Título" /></th>
+                      <th className="text-left px-2 py-2.5 hidden sm:table-cell w-36"><SortBtn k="status" label="Status" /></th>
+                      <th className="text-left px-2 py-2.5 hidden sm:table-cell w-24"><SortBtn k="priority" label="Prior." /></th>
+                      <th className="text-left px-2 py-2.5 hidden lg:table-cell w-28 text-xs text-muted-foreground font-medium">
+                        Gantt <span className="font-normal opacity-60 text-[10px]">{format(new Date(), "MMM", { locale: ptBR })}</span>
+                      </th>
+                      <th className="text-left px-2 py-2.5 hidden md:table-cell w-32">Projeto</th>
+                      <th className="text-left px-2 py-2.5 hidden lg:table-cell w-32"><SortBtn k="dueDate" label="Prazo" /></th>
+                      <th className="w-16" />
                     </tr>
-                    {/* Checklist inline expandível */}
-                    {checklistOpen && (
-                      <tr key={`${task.id}-checklist`} className="border-b bg-muted/10">
-                        <td colSpan={7} className="px-4 py-2 pl-14">
-                          <div className="flex flex-col gap-1">
-                            {checklist.map(item => (
-                              <button
-                                key={item.id}
-                                onClick={() => toggleChecklistItem(task.id, item.id)}
-                                className="flex items-center gap-2 text-left group w-full"
-                              >
-                                <div className={cn("size-3.5 rounded border flex items-center justify-center shrink-0 transition-colors", item.done ? "bg-primary border-primary" : "border-muted-foreground/40 group-hover:border-primary")}>
-                                  {item.done && <Check className="size-2 text-primary-foreground" />}
-                                </div>
-                                <span className={cn("text-xs", item.done && "line-through text-muted-foreground")}>{item.text}</span>
-                              </button>
-                            ))}
-                            {checklist.length === 0 && (
-                              <p className="text-xs text-muted-foreground">Nenhum subitem ainda.</p>
-                            )}
-                            <div className="flex items-center gap-2 mt-1">
-                              <Plus className="size-3 text-muted-foreground shrink-0" />
-                              <input
-                                className="text-xs bg-transparent outline-none flex-1 placeholder:text-muted-foreground border-b border-dashed border-muted-foreground/30 focus:border-primary pb-0.5"
-                                placeholder="Adicionar subitem… Enter"
-                                value={newChecklistText}
-                                onChange={e => setNewChecklistItems(prev => ({ ...prev, [task.id]: e.target.value }))}
-                                onKeyDown={e => {
-                                  if (e.key === "Enter" && newChecklistText.trim()) {
-                                    addChecklistItem(task.id, newChecklistText.trim())
-                                    setNewChecklistItems(prev => ({ ...prev, [task.id]: "" }))
-                                  }
-                                  if (e.key === "Escape") toggleChecklist(task.id)
-                                }}
-                                onClick={e => e.stopPropagation()}
-                              />
-                            </div>
-                          </div>
-                        </td>
+                  </thead>
+                  <tbody>
+                    {filtered.length === 0 && (
+                      <tr>
+                        <td colSpan={9} className="text-center py-10 text-muted-foreground text-sm">Nenhuma tarefa encontrada</td>
                       </tr>
                     )}
-                    </>
-                  )
-                })}
-                <InlineAddRow activeProjectId={activeProjectId} defaultProjectId={projects[0]?.id ?? ""} />
-              </tbody>
-            </table>
+                    {filtered.map(task => (
+                      <SortableRow
+                        key={task.id}
+                        task={task}
+                        onOpenTask={onOpenTask}
+                        selected={selected.includes(task.id)}
+                        onToggleSelect={() => toggleSelect(task.id)}
+                        checklistOpen={!!expandedChecklist[task.id]}
+                        onToggleChecklist={() => setExpandedChecklist(prev => ({ ...prev, [task.id]: !prev[task.id] }))}
+                        newChecklistText={newChecklistItems[task.id] ?? ""}
+                        onChecklistTextChange={v => setNewChecklistItems(prev => ({ ...prev, [task.id]: v }))}
+                      />
+                    ))}
+                    <InlineAddRow activeProjectId={activeProjectId} defaultProjectId={projects[0]?.id ?? ""} />
+                  </tbody>
+                </table>
+              </SortableContext>
+            </DndContext>
           </div>
         </div>
 
+        {!isDefaultSort && (
+          <p className="text-xs text-muted-foreground">Arraste para reordenar apenas no modo padrão (sem ordenação ativa)</p>
+        )}
         <p className="text-xs text-muted-foreground">{filtered.length} tarefa{filtered.length !== 1 ? "s" : ""}</p>
       </div>
 
-      {/* Bulk action bar */}
       {selected.length > 0 && (
         <BulkBar
           selected={selected}

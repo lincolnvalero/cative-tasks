@@ -8,8 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { TaskDialog } from "@/components/TaskDialog"
 import { ProjectIcon } from "@/components/ProjectIcon"
 import { Plus, CalendarDays, Flag, CheckCircle2, Circle, MessageSquare, CheckSquare, RefreshCw, Check, X as XIcon } from "lucide-react"
-import { format, isPast, isToday, parseISO } from "date-fns"
-import { ptBR } from "date-fns/locale"
+import { isPast, isToday, parseISO } from "date-fns"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 
@@ -26,13 +25,25 @@ function InlineAdd({ status, defaultProjectId }: { status: Status; defaultProjec
 
   function activate() { setActive(true); setTimeout(() => inputRef.current?.focus(), 50) }
 
-  function save() {
+  async function save() {
     const t = title.trim()
     if (t) {
-      addTask({ title: t, description: "", status, priority: "none", projectId: defaultProjectId, dueDate: null, tags: [], recurring: null })
+      await addTask({ title: t, description: "", status, priority: "none", projectId: defaultProjectId, dueDate: null, tags: [], recurring: null, position: 0 })
       toast.success("Tarefa criada")
     }
     setTitle("")
+    setActive(false)
+  }
+
+  async function handlePaste(e: React.ClipboardEvent<HTMLInputElement>) {
+    const text = e.clipboardData.getData("text")
+    const lines = text.split(/\n/).map(l => l.replace(/^[\-\*\•\·\◦\▪\▸\>\d+[\.\)]\s*]+/, "").trim()).filter(Boolean)
+    if (lines.length <= 1) return
+    e.preventDefault()
+    for (const line of lines) {
+      await addTask({ title: line, description: "", status, priority: "none", projectId: defaultProjectId, dueDate: null, tags: [], recurring: null, position: 0 })
+    }
+    toast.success(`${lines.length} tarefas criadas!`)
     setActive(false)
   }
 
@@ -59,6 +70,7 @@ function InlineAdd({ status, defaultProjectId }: { status: Status; defaultProjec
           if (e.key === "Enter") save()
           if (e.key === "Escape") { setTitle(""); setActive(false) }
         }}
+        onPaste={handlePaste}
         onBlur={() => { if (!title.trim()) setActive(false) }}
       />
       <div className="flex gap-1.5">
@@ -71,7 +83,7 @@ function InlineAdd({ status, defaultProjectId }: { status: Status; defaultProjec
 
 // ─── Task Card ────────────────────────────────────────────────────────────────
 function KanbanCard({ task, onOpenTask }: { task: Task; onOpenTask: (t: Task) => void }) {
-  const { moveTask, projects, addChecklistItem, toggleChecklistItem } = useApp()
+  const { moveTask, projects, addChecklistItem, toggleChecklistItem, updateTask } = useApp()
   const [checklistOpen, setChecklistOpen] = useState(false)
   const [newItem, setNewItem] = useState("")
   const newItemRef = useRef<HTMLInputElement>(null)
@@ -135,15 +147,19 @@ function KanbanCard({ task, onOpenTask }: { task: Task; onOpenTask: (t: Task) =>
       )}
 
       <div className="flex items-center gap-3 pl-6">
-        {task.dueDate && (
-          <span className={cn("flex items-center gap-1 text-xs",
-            overdue ? "text-red-500 font-medium" : dueToday ? "text-yellow-600 font-medium" : "text-muted-foreground"
-          )}>
-            <CalendarDays className="size-3" />
-            {overdue && "Atr. · "}{dueToday && "Hoje · "}
-            {format(parseISO(task.dueDate), "dd MMM", { locale: ptBR })}
-          </span>
-        )}
+        {/* Due date — inline editable */}
+        <div onClick={e => e.stopPropagation()} className="flex items-center gap-1">
+          <CalendarDays className={cn("size-3 shrink-0", overdue ? "text-red-500" : dueToday ? "text-yellow-600" : "text-muted-foreground")} />
+          <input
+            type="date"
+            value={task.dueDate ?? ""}
+            onChange={e => { updateTask(task.id, { dueDate: e.target.value || null }) }}
+            className={cn(
+              "text-xs bg-transparent outline-none cursor-pointer w-[86px]",
+              overdue ? "text-red-500 font-medium" : dueToday ? "text-yellow-600 font-medium" : "text-muted-foreground"
+            )}
+          />
+        </div>
         <div className="flex items-center gap-2 ml-auto">
           <button
             onClick={e => { e.stopPropagation(); setChecklistOpen(v => !v); setTimeout(() => newItemRef.current?.focus(), 50) }}

@@ -31,6 +31,7 @@ function mapTask(
     dueDate: row.due_date ? (row.due_date as string) : null,
     tags: (row.tags as string[]) ?? [],
     recurring: (row.recurring as Recurring) ?? null,
+    position: (row.position as number) ?? 0,
     createdAt: row.created_at as string,
     comments,
     checklist,
@@ -72,6 +73,21 @@ export function useTaskStore() {
   const [projects, setProjects] = useState<Project[]>([])
   const [savedViews, setSavedViews] = useState<SavedView[]>([])
   const [loading, setLoading] = useState(true)
+
+  // ── Reorder ────────────────────────────────────────────────────────────────
+
+  async function reorderTasks(orderedIds: string[]) {
+    setTasks(prev => {
+      const byId = Object.fromEntries(prev.map(t => [t.id, t]))
+      const reordered = orderedIds.map((id, i) => ({ ...byId[id], position: i }))
+      const rest = prev.filter(t => !orderedIds.includes(t.id))
+      return [...reordered, ...rest]
+    })
+    // Batch update positions in Supabase
+    await Promise.all(
+      orderedIds.map((id, i) => supabase.from("ct_tasks").update({ position: i }).eq("id", id))
+    )
+  }
 
   // Load all data on mount
   useEffect(() => {
@@ -119,9 +135,9 @@ export function useTaskStore() {
           activityByTask[tid].push(mapActivity(r))
         }
 
-        const mappedTasks = (taskRows ?? []).map(r =>
-          mapTask(r, commentsByTask[r.id as string] ?? [], checklistByTask[r.id as string] ?? [], activityByTask[r.id as string] ?? [])
-        )
+        const mappedTasks = (taskRows ?? [])
+          .sort((a, b) => ((a.position as number) ?? 0) - ((b.position as number) ?? 0))
+          .map(r => mapTask(r, commentsByTask[r.id as string] ?? [], checklistByTask[r.id as string] ?? [], activityByTask[r.id as string] ?? []))
         setTasks(mappedTasks)
       } finally {
         setLoading(false)
@@ -142,6 +158,7 @@ export function useTaskStore() {
       due_date: taskData.dueDate || null,
       tags: taskData.tags,
       recurring: taskData.recurring || null,
+      position: taskData.position ?? 0,
     }).select().single()
 
     if (error || !data) return
@@ -311,6 +328,7 @@ export function useTaskStore() {
 
   return {
     tasks, projects, savedViews, loading,
+    reorderTasks,
     addTask, updateTask, deleteTask, deleteTasks, updateTasks, moveTask,
     addComment, deleteComment,
     addChecklistItem, toggleChecklistItem, deleteChecklistItem,

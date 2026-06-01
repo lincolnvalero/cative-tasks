@@ -10,6 +10,7 @@ interface AppContextValue {
   activeProjectId: string | null
   setActiveProjectId: (id: string | null) => void
   addTask: (task: Omit<Task, "id" | "createdAt" | "comments" | "checklist" | "activity">) => Promise<Task | undefined>
+  reorderTasks: (orderedIds: string[]) => Promise<void>
   updateTask: (id: string, patch: Partial<Task>, activityText?: string) => void
   deleteTask: (id: string) => void
   deleteTasks: (ids: string[]) => void
