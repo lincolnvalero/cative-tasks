@@ -6,9 +6,10 @@ interface AppContextValue {
   tasks: Task[]
   projects: Project[]
   savedViews: SavedView[]
+  loading: boolean
   activeProjectId: string | null
   setActiveProjectId: (id: string | null) => void
-  addTask: (task: Omit<Task, "id" | "createdAt" | "comments" | "checklist" | "activity">) => Task
+  addTask: (task: Omit<Task, "id" | "createdAt" | "comments" | "checklist" | "activity">) => Promise<Task | undefined>
   updateTask: (id: string, patch: Partial<Task>, activityText?: string) => void
   deleteTask: (id: string) => void
   deleteTasks: (ids: string[]) => void

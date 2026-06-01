@@ -10,7 +10,9 @@ import { CommandPalette } from "@/components/CommandPalette"
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 import { useTheme } from "@/components/theme-provider"
+import { useApp } from "@/context/AppContext"
 import { Toaster } from "sonner"
 import { Sun, Moon, Monitor, Search } from "lucide-react"
 import type { Task } from "@/types/task"
@@ -29,6 +31,7 @@ function ThemeToggle() {
 }
 
 function AppInner() {
+  const { loading } = useApp()
   const [page, setPage] = useState<Page>("dashboard")
   const [detailTask, setDetailTask] = useState<Task | null>(null)
   const [newTaskOpen, setNewTaskOpen] = useState(false)
@@ -57,15 +60,24 @@ function AppInner() {
 
         {/* Main — extra bottom padding on mobile for BottomNav */}
         <main className="flex-1 overflow-auto p-4 md:p-6 pb-24 md:pb-6">
-          {page === "dashboard" && <DashboardPage />}
-          {page === "tasks" && (
+          {loading && (
+            <div className="flex flex-col gap-4">
+              <Skeleton className="h-8 w-48" />
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {[1,2,3,4].map(i => <Skeleton key={i} className="h-28" />)}
+              </div>
+              <Skeleton className="h-40" />
+            </div>
+          )}
+          {!loading && page === "dashboard" && <DashboardPage />}
+          {!loading && page === "tasks" && (
             <TasksPage
               onOpenTask={setDetailTask}
               newTaskOpen={newTaskOpen}
               onNewTaskClose={() => setNewTaskOpen(false)}
             />
           )}
-          {page === "projects" && <ProjectsPage />}
+          {!loading && page === "projects" && <ProjectsPage />}
         </main>
       </SidebarInset>
 
