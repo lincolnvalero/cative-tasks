@@ -19,7 +19,7 @@ interface KanbanViewProps { onOpenTask: (task: Task) => void }
 
 // ─── Inline add ───────────────────────────────────────────────────────────────
 function InlineAdd({ status, defaultProjectId }: { status: Status; defaultProjectId: string }) {
-  const { addTask, projects } = useApp()
+  const { addTask } = useApp()
   const [active, setActive] = useState(false)
   const [title, setTitle] = useState("")
   const inputRef = useRef<HTMLInputElement>(null)
@@ -71,7 +71,7 @@ function InlineAdd({ status, defaultProjectId }: { status: Status; defaultProjec
 
 // ─── Task Card ────────────────────────────────────────────────────────────────
 function KanbanCard({ task, onOpenTask }: { task: Task; onOpenTask: (t: Task) => void }) {
-  const { projects, moveTask } = useApp()
+  const { moveTask, projects } = useApp()
   const project = projects.find(p => p.id === task.projectId)
   const priority = PRIORITY_CONFIG[task.priority]
   const isDone = task.status === "done"
@@ -105,7 +105,7 @@ function KanbanCard({ task, onOpenTask }: { task: Task; onOpenTask: (t: Task) =>
         </button>
         <p className={cn("text-sm font-medium leading-snug flex-1", isDone && "line-through")}>{task.title}</p>
         {task.recurring && (
-          <RefreshCw className="size-3 text-muted-foreground shrink-0 mt-0.5" title="Recorrente" />
+          <RefreshCw className="size-3 text-muted-foreground shrink-0 mt-0.5" aria-label="Recorrente" />
         )}
       </div>
 
@@ -160,12 +160,12 @@ function KanbanCard({ task, onOpenTask }: { task: Task; onOpenTask: (t: Task) =>
 
 // ─── Column ───────────────────────────────────────────────────────────────────
 export function KanbanView({ onOpenTask }: KanbanViewProps) {
-  const { tasks, moveTask, activeProjectId, projects } = useApp()
+  const { tasks, moveTask, activeProjectId, projects: allProjects } = useApp()
   const [newStatus, setNewStatus] = useState<Status | null>(null)
   const [dragOverCol, setDragOverCol] = useState<Status | null>(null)
 
   const visibleTasks = activeProjectId ? tasks.filter(t => t.projectId === activeProjectId) : tasks
-  const defaultProjectId = activeProjectId ?? projects[0]?.id ?? ""
+  const defaultProjectId = activeProjectId ?? allProjects[0]?.id ?? ""
 
   function handleDrop(e: React.DragEvent, status: Status) {
     e.preventDefault()

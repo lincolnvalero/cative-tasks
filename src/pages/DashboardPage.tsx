@@ -11,11 +11,10 @@ import { ptBR } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip,
-  ResponsiveContainer, Legend,
+  ResponsiveContainer,
 } from "recharts"
 
 const STATUS_COLORS: Record<Status, string> = {
-  backlog: "#94a3b8",
   todo: "#3b82f6",
   "in-progress": "#f59e0b",
   review: "#a855f7",
@@ -59,10 +58,6 @@ export function DashboardPage() {
     total: tasks.filter(t => t.projectId === p.id).length,
     done: tasks.filter(t => t.projectId === p.id && t.status === "done").length,
   })).filter(d => d.total > 0)
-
-  const recent = [...tasks]
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    .slice(0, 5)
 
   const urgent = tasks
     .filter(t => (t.priority === "urgent" || t.priority === "high") && t.status !== "done")

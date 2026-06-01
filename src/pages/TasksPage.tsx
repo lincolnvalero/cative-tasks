@@ -1,14 +1,13 @@
 import { useState, useEffect } from "react"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { KanbanView } from "@/components/views/KanbanView"
 import { ListView } from "@/components/views/ListView"
 import { CalendarView } from "@/components/views/CalendarView"
 import { TaskDialog } from "@/components/TaskDialog"
 import { useApp } from "@/context/AppContext"
-import type { Task, SavedView } from "@/types/task"
-import { Plus, Kanban, List, CalendarDays, X, Trash2 } from "lucide-react"
+import type { Task } from "@/types/task"
+import { Plus, Kanban, List, CalendarDays, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface Props {

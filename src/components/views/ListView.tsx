@@ -305,7 +305,7 @@ export function ListView({ onOpenTask, appliedView }: ListViewProps) {
                           <span className={cn("font-medium truncate", isDone && "line-through text-muted-foreground")}>
                             {task.title}
                           </span>
-                          {task.recurring && <RefreshCw className="size-3 text-muted-foreground shrink-0" title="Recorrente" />}
+                          {task.recurring && <RefreshCw className="size-3 text-muted-foreground shrink-0" aria-label="Recorrente" />}
                         </div>
                         {task.tags.length > 0 && (
                           <div className="flex flex-wrap gap-1 mt-1 ml-6">
