@@ -22,7 +22,7 @@ interface AppContextValue {
   addChecklistItem: (taskId: string, text: string) => void
   toggleChecklistItem: (taskId: string, itemId: string) => void
   deleteChecklistItem: (taskId: string, itemId: string) => void
-  addProject: (project: Omit<Project, "id">) => void
+  addProject: (project: Omit<Project, "id">) => Promise<Project | undefined>
   updateProject: (id: string, patch: Partial<Project>) => void
   deleteProject: (id: string) => void
   addSavedView: (view: Omit<SavedView, "id">) => void

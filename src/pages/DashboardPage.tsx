@@ -33,59 +33,88 @@ const PRIORITY_COLORS: Record<Priority, string> = {
 }
 
 export function DashboardPage() {
-  const { tasks, projects, addTask, addComment, addChecklistItem } = useApp()
+  const { tasks, projects, addTask, addComment, addChecklistItem, addProject } = useApp()
 
-  // Detect localStorage data
+  // Detect localStorage data — tarefas E projetos
   const [localTasks, setLocalTasks] = useState<Task[]>(() => {
-    try {
-      return JSON.parse(localStorage.getItem('cative-tasks') || '[]')
-    } catch {
-      return []
-    }
+    try { return JSON.parse(localStorage.getItem('cative-tasks') || '[]') } catch { return [] }
+  })
+  const [localProjects] = useState<Array<{id:string;name:string;color:string;emoji:string}>>(() => {
+    try { return JSON.parse(localStorage.getItem('cative-projects') || '[]') } catch { return [] }
   })
 
   const [isMigrating, setIsMigrating] = useState(false)
 
   async function handleMigrateLocal() {
     if (localTasks.length === 0) return
-
     setIsMigrating(true)
     try {
+      // 1. Mapear projetos antigos (IDs tipo "p1") para novos UUIDs do Supabase
+      const projectIdMap: Record<string, string> = {}
+
+      for (const lp of localProjects) {
+        // Verificar se já existe projeto com esse nome no Supabase
+        const existing = projects.find(p => p.name === lp.name)
+        if (existing) {
+          projectIdMap[lp.id] = existing.id
+        } else {
+          // Criar no Supabase e mapear
+          const newP = await addProject({ name: lp.name, color: lp.color, emoji: lp.emoji })
+          if (newP) projectIdMap[lp.id] = newP.id
+        }
+      }
+
+      // Mapear também os projetos default pelo nome
+      for (const p of projects) {
+        // Se o localStorage usava IDs como "p1"..."p5", tenta mapear pelo índice/nome
+        const matchLocal = localProjects.find(lp => lp.name === p.name)
+        if (matchLocal && !projectIdMap[matchLocal.id]) {
+          projectIdMap[matchLocal.id] = p.id
+        }
+      }
+
+      // 2. Importar tarefas com projectId mapeado
+      let imported = 0
       for (let i = 0; i < localTasks.length; i++) {
         const lt = localTasks[i]
-        toast.info(`Importando ${i + 1} de ${localTasks.length}...`)
+        toast.info(`Importando tarefa ${i + 1} de ${localTasks.length}...`)
+
+        // Resolver projectId: usar mapeamento ou fallback para primeiro projeto
+        const resolvedProjectId = projectIdMap[lt.projectId] || projects[0]?.id || ''
 
         const newTask = await addTask({
           title: lt.title,
-          description: lt.description,
+          description: lt.description || '',
           status: lt.status,
           priority: lt.priority,
-          projectId: lt.projectId,
+          projectId: resolvedProjectId,
           dueDate: lt.dueDate,
-          tags: lt.tags,
+          tags: lt.tags || [],
           recurring: lt.recurring ?? null,
           position: i,
         })
 
-        if (newTask && lt.checklist?.length) {
-          for (const item of lt.checklist) {
-            await addChecklistItem(newTask.id, item.text)
+        if (newTask) {
+          imported++
+          if (lt.checklist?.length) {
+            for (const item of lt.checklist) {
+              await addChecklistItem(newTask.id, item.text)
+            }
           }
-        }
-
-        if (newTask && lt.comments?.length) {
-          for (const c of lt.comments) {
-            await addComment(newTask.id, c.text)
+          if (lt.comments?.length) {
+            for (const c of lt.comments) {
+              await addComment(newTask.id, c.text)
+            }
           }
         }
       }
 
       localStorage.removeItem('cative-tasks')
       setLocalTasks([])
-      toast.success(`${localTasks.length} tarefas importadas com sucesso!`)
+      toast.success(`✅ ${imported} tarefas importadas com sucesso!`)
     } catch (error) {
-      console.error('Erro ao importar tarefas:', error)
-      toast.error('Erro ao importar tarefas. Tente novamente.')
+      console.error('Erro ao importar:', error)
+      toast.error(`Erro ao importar: ${error instanceof Error ? error.message : 'Tente novamente'}`)
     } finally {
       setIsMigrating(false)
     }
