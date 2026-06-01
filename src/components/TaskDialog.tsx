@@ -107,6 +107,7 @@ export function TaskDialog({ open, onClose, task, defaultStatus }: TaskDialogPro
             onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
           />
 
+          {/* Status + Prioridade: 2 colunas (nomes curtos) */}
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
               <label className="text-xs text-muted-foreground">Status</label>
@@ -131,32 +132,34 @@ export function TaskDialog({ open, onClose, task, defaultStatus }: TaskDialogPro
                 </SelectContent>
               </Select>
             </div>
+          </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-muted-foreground">Projeto</label>
-              <Select value={form.projectId} onValueChange={v => setForm(f => ({ ...f, projectId: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {projects.map(p => (
-                    <SelectItem key={p.id} value={p.id}>
-                      <span className="flex items-center gap-2">
-                        <ProjectIcon iconKey={p.emoji} className="size-3.5" style={{ color: p.color }} />
-                        {p.name}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          {/* Projeto: largura total para não truncar */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs text-muted-foreground">Projeto</label>
+            <Select value={form.projectId} onValueChange={v => setForm(f => ({ ...f, projectId: v }))}>
+              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {projects.map(p => (
+                  <SelectItem key={p.id} value={p.id}>
+                    <span className="flex items-center gap-2">
+                      <ProjectIcon iconKey={p.emoji} className="size-3.5" style={{ color: p.color }} />
+                      {p.name}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs text-muted-foreground">Data de entrega</label>
-              <Input
-                type="date"
-                value={form.dueDate}
-                onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))}
-              />
-            </div>
+          {/* Data de entrega: largura total */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs text-muted-foreground">Data de entrega</label>
+            <Input
+              type="date"
+              value={form.dueDate}
+              onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))}
+            />
           </div>
 
           <div className="flex flex-col gap-1.5">
