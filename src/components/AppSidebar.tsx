@@ -6,10 +6,10 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { useApp } from "@/context/AppContext"
 import type { Status } from "@/types/task"
-import { LayoutDashboard, CheckSquare, FolderKanban, Zap } from "lucide-react"
+import { LayoutDashboard, CheckSquare, FolderKanban, Zap, StickyNote } from "lucide-react"
 import { ProjectIcon } from "@/components/ProjectIcon"
 
-type Page = "dashboard" | "tasks" | "projects"
+type Page = "dashboard" | "tasks" | "projects" | "notes"
 
 interface Props {
   page: Page
@@ -80,6 +80,15 @@ export function AppSidebar({ page, onNavigate }: Props) {
               >
                 <FolderKanban />
                 <span>Projetos</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                isActive={page === "notes"}
+                onClick={() => { onNavigate("notes"); setActiveProjectId(null) }}
+              >
+                <StickyNote />
+                <span>Notas</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>

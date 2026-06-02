@@ -1,7 +1,7 @@
-import { LayoutDashboard, CheckSquare, FolderKanban, Search } from "lucide-react"
+import { LayoutDashboard, CheckSquare, FolderKanban, Search, StickyNote } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-type Page = "dashboard" | "tasks" | "projects"
+type Page = "dashboard" | "tasks" | "projects" | "notes"
 
 interface Props {
   page: Page
@@ -13,6 +13,7 @@ const ITEMS = [
   { id: "dashboard" as Page, label: "Dashboard", Icon: LayoutDashboard },
   { id: "tasks" as Page,     label: "Tarefas",   Icon: CheckSquare },
   { id: "projects" as Page,  label: "Projetos",  Icon: FolderKanban },
+  { id: "notes" as Page,     label: "Notas",     Icon: StickyNote },
 ]
 
 export function BottomNav({ page, onNavigate, onSearch }: Props) {
