@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, type ReactNode } from "react"
 import { useTaskStore } from "@/store/useTaskStore"
-import type { Task, Project, Status, SavedView } from "@/types/task"
+import type { Task, Project, Status, SavedView, Workspace } from "@/types/task"
 
 interface AppContextValue {
   tasks: Task[]
@@ -10,6 +10,8 @@ interface AppContextValue {
   saving: boolean
   activeProjectId: string | null
   setActiveProjectId: (id: string | null) => void
+  activeWorkspace: Workspace | "all"
+  setActiveWorkspace: (w: Workspace | "all") => void
   addTask: (task: Omit<Task, "id" | "createdAt" | "comments" | "checklist" | "activity" | "links">) => Promise<Task | undefined>
   reorderTasks: (orderedIds: string[]) => Promise<void>
   updateTask: (id: string, patch: Partial<Task>, activityText?: string) => void
@@ -37,8 +39,17 @@ const AppContext = createContext<AppContextValue | null>(null)
 export function AppProvider({ children }: { children: ReactNode }) {
   const store = useTaskStore()
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null)
+  const [activeWorkspace, setActiveWorkspace] = useState<Workspace | "all">(() => {
+    return (localStorage.getItem("lincoln-workspace") as Workspace | "all") ?? "all"
+  })
+
+  function handleSetWorkspace(w: Workspace | "all") {
+    setActiveWorkspace(w)
+    localStorage.setItem("lincoln-workspace", w)
+  }
+
   return (
-    <AppContext.Provider value={{ ...store, activeProjectId, setActiveProjectId }}>
+    <AppContext.Provider value={{ ...store, activeProjectId, setActiveProjectId, activeWorkspace, setActiveWorkspace: handleSetWorkspace }}>
       {children}
     </AppContext.Provider>
   )

@@ -18,7 +18,8 @@ interface CalendarViewProps {
 }
 
 export function CalendarView({ onOpenTask }: CalendarViewProps) {
-  const { tasks, activeProjectId } = useApp()
+  const { tasks: allTasks, activeProjectId, activeWorkspace } = useApp()
+  const tasks = activeWorkspace === "all" ? allTasks : allTasks.filter(t => t.workspace === activeWorkspace)
   const [currentMonth, setCurrentMonth] = useState(new Date())
 
   const monthStart = startOfMonth(currentMonth)

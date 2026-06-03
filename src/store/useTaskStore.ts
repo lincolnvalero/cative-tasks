@@ -40,6 +40,7 @@ function mapTask(
     activity,
     links,
     assignee: (row.assignee as string) ?? null,
+    workspace: ((row.workspace as string) ?? "cative") as import("@/types/task").Workspace,
   }
 }
 
@@ -198,6 +199,7 @@ export function useTaskStore() {
         recurring: taskData.recurring || null,
         position: taskData.position ?? 0,
         assignee: taskData.assignee || null,
+        workspace: taskData.workspace ?? "cative",
       }).select().single()
 
       if (error || !data) {

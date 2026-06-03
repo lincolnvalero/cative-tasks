@@ -340,7 +340,7 @@ function InlineAddRow({ activeProjectId, defaultProjectId }: { activeProjectId: 
     await addTask({
       title: title.trim(), description: "", status: "todo", priority: "none",
       projectId: activeProjectId ?? defaultProjectId, dueDate: null, tags: [], recurring: null,
-      position: tasks.length, assignee: null,
+      position: tasks.length, assignee: null, workspace: "cative" as const,
     })
     toast.success("Tarefa criada")
     setTitle("")
@@ -363,7 +363,7 @@ function InlineAddRow({ activeProjectId, defaultProjectId }: { activeProjectId: 
         await addTask({
           title: lines[i], description: "", status: "todo", priority: "none",
           projectId: activeProjectId ?? defaultProjectId, dueDate: null, tags: [], recurring: null,
-          position: tasks.length + i, assignee: null,
+          position: tasks.length + i, assignee: null, workspace: "cative" as const,
         })
       }
       toast.success(`${lines.length} tarefas criadas!`)
@@ -457,7 +457,8 @@ interface ListViewProps {
 }
 
 export function ListView({ onOpenTask, appliedView, todayFilter = false, noDueDateFilter = false }: ListViewProps) {
-  const { tasks, projects, deleteTasks, updateTasks, activeProjectId, addSavedView, reorderTasks } = useApp()
+  const { tasks: allTasks, projects, deleteTasks, updateTasks, activeProjectId, addSavedView, reorderTasks, activeWorkspace } = useApp()
+  const tasks = activeWorkspace === "all" ? allTasks : allTasks.filter(t => t.workspace === activeWorkspace)
   const [newOpen, setNewOpen] = useState(false)
   const [search, setSearch] = useState(appliedView?.filters.search ?? "")
   const [filterStatus, setFilterStatus] = useState<string>(appliedView?.filters.status ?? "all")

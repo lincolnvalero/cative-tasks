@@ -6,8 +6,9 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { useApp } from "@/context/AppContext"
 import type { Status } from "@/types/task"
-import { LayoutDashboard, CheckSquare, FolderKanban, Zap, StickyNote } from "lucide-react"
+import { LayoutDashboard, CheckSquare, FolderKanban, Zap, StickyNote, User, Building2 } from "lucide-react"
 import { ProjectIcon } from "@/components/ProjectIcon"
+import { cn } from "@/lib/utils"
 
 type Page = "dashboard" | "tasks" | "projects" | "notes"
 
@@ -19,7 +20,7 @@ interface Props {
 const ACTIVE_STATUSES: Status[] = ["todo", "in-progress", "review"]
 
 export function AppSidebar({ page, onNavigate }: Props) {
-  const { tasks, projects, activeProjectId, setActiveProjectId } = useApp()
+  const { tasks, projects, activeProjectId, setActiveProjectId, activeWorkspace, setActiveWorkspace } = useApp()
 
   const activeTasks = tasks.filter(t => ACTIVE_STATUSES.includes(t.status)).length
 
@@ -35,13 +36,38 @@ export function AppSidebar({ page, onNavigate }: Props) {
   return (
     <Sidebar>
       <SidebarHeader>
-        <div className="flex items-center gap-2 px-2 py-1">
-          <div className="size-8 rounded-lg bg-primary flex items-center justify-center">
-            <Zap className="size-4 text-primary-foreground" />
+        <div className="flex flex-col gap-2 px-2 py-1">
+          <div className="flex items-center gap-2">
+            <div className="size-8 rounded-lg bg-primary flex items-center justify-center shrink-0">
+              <Zap className="size-4 text-primary-foreground" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold leading-tight">Lincoln Tasks</p>
+              <p className="text-xs text-muted-foreground">Gestão pessoal</p>
+            </div>
           </div>
-          <div>
-            <p className="text-sm font-semibold leading-tight">Cative Tasks</p>
-            <p className="text-xs text-muted-foreground">Diretoria de Operações</p>
+
+          {/* Workspace switcher */}
+          <div className="flex rounded-lg border overflow-hidden text-xs">
+            {(["all", "personal", "cative"] as const).map(w => {
+              const labels = { all: "Todos", personal: "Pessoal", cative: "Cative" }
+              const icons = { all: null, personal: <User className="size-3" />, cative: <Building2 className="size-3" /> }
+              return (
+                <button
+                  key={w}
+                  onClick={() => setActiveWorkspace(w)}
+                  className={cn(
+                    "flex-1 flex items-center justify-center gap-1 py-1 transition-colors",
+                    activeWorkspace === w
+                      ? w === "personal" ? "bg-blue-500 text-white" : w === "cative" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
+                      : "hover:bg-muted/50 text-muted-foreground"
+                  )}
+                >
+                  {icons[w]}
+                  {labels[w]}
+                </button>
+              )
+            })}
           </div>
         </div>
       </SidebarHeader>

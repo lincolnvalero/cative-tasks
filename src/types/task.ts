@@ -1,6 +1,7 @@
 export type Status = "todo" | "in-progress" | "review" | "done"
 export type Priority = "none" | "low" | "medium" | "high" | "urgent"
 export type Recurring = "daily" | "weekly" | "biweekly" | "monthly" | null
+export type Workspace = "personal" | "cative"
 
 export interface Comment {
   id: string
@@ -43,6 +44,7 @@ export interface Task {
   activity: ActivityEntry[]
   links: TaskLink[]
   assignee: string | null
+  workspace: Workspace
 }
 
 export interface Project {
@@ -107,7 +109,7 @@ export const DEFAULT_SAVED_VIEWS: SavedView[] = [
 const task = (overrides: Partial<Task> & Pick<Task, "id" | "title" | "status" | "priority" | "projectId">): Task => ({
   description: "", dueDate: null, tags: [], createdAt: "2026-05-28T10:00:00Z",
   recurring: null, position: 0, comments: [], checklist: [], activity: [{ id: "a1", text: "Tarefa criada", createdAt: "2026-05-28T10:00:00Z" }],
-  links: [], assignee: null,
+  links: [], assignee: null, workspace: "cative" as Workspace,
   ...overrides,
 })
 

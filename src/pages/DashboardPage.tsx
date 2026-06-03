@@ -95,6 +95,7 @@ export function DashboardPage() {
             recurring: lt.recurring ?? null,
             position: i,
             assignee: null,
+            workspace: (lt.workspace ?? "cative") as import("@/types/task").Workspace,
           })
 
           if (!newTask) throw new Error(`Falha ao criar "${lt.title}"`)

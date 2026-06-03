@@ -6,8 +6,9 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { useApp } from "@/context/AppContext"
-import type { Task, Status, Priority } from "@/types/task"
+import type { Task, Status, Priority, Workspace } from "@/types/task"
 import { STATUS_CONFIG, PRIORITY_CONFIG } from "@/types/task"
+import { User, Building2 } from "lucide-react"
 import { X } from "lucide-react"
 import { ProjectIcon } from "@/components/ProjectIcon"
 import { toast } from "sonner"
@@ -27,10 +28,11 @@ const emptyForm = {
   projectId: "",
   dueDate: "",
   tags: [] as string[],
+  workspace: "cative" as Workspace,
 }
 
 export function TaskDialog({ open, onClose, task, defaultStatus }: TaskDialogProps) {
-  const { addTask, updateTask, projects, activeProjectId, tasks } = useApp()
+  const { addTask, updateTask, projects, activeProjectId, tasks, activeWorkspace } = useApp()
   const [form, setForm] = useState(emptyForm)
   const [tagInput, setTagInput] = useState("")
 
@@ -47,10 +49,12 @@ export function TaskDialog({ open, onClose, task, defaultStatus }: TaskDialogPro
         projectId: task.projectId,
         dueDate: task.dueDate ?? "",
         tags: task.tags,
+        workspace: task.workspace ?? "cative",
       })
     } else {
       const defaultProject = activeProjectId ?? projects[0]?.id ?? ""
-      setForm({ ...emptyForm, status: defaultStatus ?? "todo", projectId: defaultProject })
+      const ws: Workspace = activeWorkspace === "all" ? "cative" : activeWorkspace
+      setForm({ ...emptyForm, status: defaultStatus ?? "todo", projectId: defaultProject, workspace: ws })
     }
     setTagInput("")
   }, [task, open, defaultStatus, projects, activeProjectId])
@@ -66,7 +70,7 @@ export function TaskDialog({ open, onClose, task, defaultStatus }: TaskDialogPro
       updateTask(task.id, payload)
       toast.success("Tarefa atualizada")
     } else {
-      addTask({ ...payload, recurring: null, position: 0, assignee: null })
+      addTask({ ...payload, recurring: null, position: 0, assignee: null, workspace: form.workspace })
       toast.success("Tarefa criada!")
     }
     onClose()
@@ -150,6 +154,27 @@ export function TaskDialog({ open, onClose, task, defaultStatus }: TaskDialogPro
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Workspace */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs text-muted-foreground">Contexto</label>
+            <div className="flex rounded-lg border overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setForm(f => ({ ...f, workspace: "personal" }))}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs transition-colors ${form.workspace === "personal" ? "bg-blue-500 text-white" : "hover:bg-muted/50 text-muted-foreground"}`}
+              >
+                <User className="size-3" /> Pessoal
+              </button>
+              <button
+                type="button"
+                onClick={() => setForm(f => ({ ...f, workspace: "cative" }))}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs transition-colors ${form.workspace === "cative" ? "bg-primary text-primary-foreground" : "hover:bg-muted/50 text-muted-foreground"}`}
+              >
+                <Building2 className="size-3" /> Cative
+              </button>
+            </div>
           </div>
 
           {/* Data de entrega: largura total */}

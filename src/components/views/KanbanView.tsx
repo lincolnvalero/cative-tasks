@@ -28,7 +28,7 @@ function InlineAdd({ status, defaultProjectId }: { status: Status; defaultProjec
   async function save() {
     const t = title.trim()
     if (t) {
-      await addTask({ title: t, description: "", status, priority: "none", projectId: defaultProjectId, dueDate: null, tags: [], recurring: null, position: 0, assignee: null })
+      await addTask({ title: t, description: "", status, priority: "none", projectId: defaultProjectId, dueDate: null, tags: [], recurring: null, position: 0, assignee: null, workspace: "cative" as const })
       toast.success("Tarefa criada")
     }
     setTitle("")
@@ -41,7 +41,7 @@ function InlineAdd({ status, defaultProjectId }: { status: Status; defaultProjec
     if (lines.length <= 1) return
     e.preventDefault()
     for (const line of lines) {
-      await addTask({ title: line, description: "", status, priority: "none", projectId: defaultProjectId, dueDate: null, tags: [], recurring: null, position: 0, assignee: null })
+      await addTask({ title: line, description: "", status, priority: "none", projectId: defaultProjectId, dueDate: null, tags: [], recurring: null, position: 0, assignee: null, workspace: "cative" as const })
     }
     toast.success(`${lines.length} tarefas criadas!`)
     setActive(false)
@@ -266,11 +266,12 @@ function KanbanCard({ task, onOpenTask }: { task: Task; onOpenTask: (t: Task) =>
 
 // ─── Column ───────────────────────────────────────────────────────────────────
 export function KanbanView({ onOpenTask }: KanbanViewProps) {
-  const { tasks, moveTask, activeProjectId, projects: allProjects } = useApp()
+  const { tasks, moveTask, activeProjectId, projects: allProjects, activeWorkspace } = useApp()
   const [newStatus, setNewStatus] = useState<Status | null>(null)
   const [dragOverCol, setDragOverCol] = useState<Status | null>(null)
 
-  const visibleTasks = activeProjectId ? tasks.filter(t => t.projectId === activeProjectId) : tasks
+  const workspaceTasks = activeWorkspace === "all" ? tasks : tasks.filter(t => t.workspace === activeWorkspace)
+  const visibleTasks = activeProjectId ? workspaceTasks.filter(t => t.projectId === activeProjectId) : workspaceTasks
   const defaultProjectId = activeProjectId ?? allProjects[0]?.id ?? ""
 
   function handleDrop(e: React.DragEvent, status: Status) {
