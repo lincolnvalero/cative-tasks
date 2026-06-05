@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { Note, NoteColor } from "@/types/note"
 import { NOTE_COLORS } from "@/types/note"
-import { Pin, PinOff, Trash2, X } from "lucide-react"
+import { Pin, PinOff, Trash2, X, Tag } from "lucide-react"
 import { formatDistanceToNow, parseISO } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { showConfirm } from "@/components/ConfirmDialog"
@@ -12,26 +12,28 @@ import { toast } from "sonner"
 
 interface Props {
   note: Note | null
+  allTags: string[]
   onClose: () => void
-  onUpdate: (id: string, patch: Partial<Pick<Note, "title" | "content" | "color" | "pinned">>) => Promise<void>
+  onUpdate: (id: string, patch: Partial<Pick<Note, "title" | "content" | "color" | "pinned" | "tags">>) => Promise<void>
   onDelete: (id: string) => Promise<void>
   onTogglePin: (id: string) => Promise<void>
 }
 
-export function NoteEditor({ note, onClose, onUpdate, onDelete, onTogglePin }: Props) {
+export function NoteEditor({ note, allTags, onClose, onUpdate, onDelete, onTogglePin }: Props) {
   const [title, setTitle] = useState("")
   const [content, setContent] = useState("")
+  const [tagInput, setTagInput] = useState("")
   const [saving, setSaving] = useState(false)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const contentRef = useRef<HTMLTextAreaElement>(null)
+  const tagInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (note) {
       setTitle(note.title)
       setContent(note.content)
-      setTimeout(() => {
-        if (!note.title) contentRef.current?.focus()
-      }, 100)
+      setTagInput("")
+      setTimeout(() => { if (!note.title) contentRef.current?.focus() }, 100)
     }
   }, [note?.id])
 
@@ -45,14 +47,9 @@ export function NoteEditor({ note, onClose, onUpdate, onDelete, onTogglePin }: P
     }, 800)
   }
 
-  function handleTitleChange(v: string) {
-    setTitle(v)
-    scheduleAutoSave(v, content)
-  }
-
+  function handleTitleChange(v: string) { setTitle(v); scheduleAutoSave(v, content) }
   function handleContentChange(v: string) {
-    setContent(v)
-    scheduleAutoSave(title, v)
+    setContent(v); scheduleAutoSave(title, v)
     if (contentRef.current) {
       contentRef.current.style.height = "auto"
       contentRef.current.style.height = contentRef.current.scrollHeight + "px"
@@ -62,6 +59,20 @@ export function NoteEditor({ note, onClose, onUpdate, onDelete, onTogglePin }: P
   async function handleColorChange(color: NoteColor) {
     if (!note) return
     await onUpdate(note.id, { color })
+  }
+
+  async function addTag(tag: string) {
+    if (!note) return
+    const t = tag.trim().toLowerCase().replace(/\s+/g, "-")
+    if (!t || note.tags.includes(t)) { setTagInput(""); return }
+    const newTags = [...note.tags, t]
+    await onUpdate(note.id, { tags: newTags })
+    setTagInput("")
+  }
+
+  async function removeTag(tag: string) {
+    if (!note) return
+    await onUpdate(note.id, { tags: note.tags.filter(t => t !== tag) })
   }
 
   async function handleDelete() {
@@ -76,12 +87,18 @@ export function NoteEditor({ note, onClose, onUpdate, onDelete, onTogglePin }: P
 
   if (!note) return null
   const colorCfg = NOTE_COLORS[note.color] || NOTE_COLORS.default
+  const suggestions = allTags.filter(t => !note.tags.includes(t) && t.includes(tagInput.toLowerCase()))
 
   return (
     <Dialog open={!!note} onOpenChange={v => !v && onClose()}>
-      <DialogContent className={cn("max-w-2xl h-[90vh] flex flex-col p-0 gap-0 overflow-hidden", colorCfg.bg, colorCfg.border)}>
+      {/* [&>[data-slot='dialog-close']]:hidden remove o X auto do shadcn — usamos o nosso */}
+      <DialogContent className={cn(
+        "max-w-2xl h-[90vh] flex flex-col p-0 gap-0 overflow-hidden [&>[data-slot='dialog-close']]:hidden",
+        colorCfg.bg, colorCfg.border
+      )}>
         <DialogTitle className="sr-only">Editar nota</DialogTitle>
 
+        {/* Header com título + botão X único */}
         <div className="flex items-center justify-between px-5 pt-4 pb-2 shrink-0">
           <input
             className="text-xl font-bold bg-transparent outline-none flex-1 placeholder:text-muted-foreground/50"
@@ -90,14 +107,52 @@ export function NoteEditor({ note, onClose, onUpdate, onDelete, onTogglePin }: P
             onChange={e => handleTitleChange(e.target.value)}
             onKeyDown={e => e.key === "Enter" && contentRef.current?.focus()}
           />
-          <div className="flex items-center gap-1 shrink-0 ml-2">
+          <div className="flex items-center gap-1.5 shrink-0 ml-2">
             {saving && <span className="text-[10px] text-muted-foreground animate-pulse">salvando...</span>}
-            <Button variant="ghost" size="icon" className="size-8" onClick={onClose}>
+            <Button variant="ghost" size="icon" className="size-8 rounded-full" onClick={onClose} title="Fechar">
               <X className="size-4" />
             </Button>
           </div>
         </div>
 
+        {/* Tags */}
+        <div className="px-5 pb-2 shrink-0 flex flex-wrap items-center gap-1.5">
+          {note.tags.map(tag => (
+            <span key={tag} className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+              <Tag className="size-2.5" />
+              {tag}
+              <button onClick={() => removeTag(tag)} className="ml-0.5 hover:text-destructive transition-colors">
+                <X className="size-2.5" />
+              </button>
+            </span>
+          ))}
+          {/* Tag input */}
+          <div className="relative">
+            <input
+              ref={tagInputRef}
+              className="text-xs bg-transparent outline-none border-b border-dashed border-muted-foreground/30 focus:border-primary placeholder:text-muted-foreground/40 w-20"
+              placeholder="+ tag"
+              value={tagInput}
+              onChange={e => setTagInput(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addTag(tagInput) }
+                if (e.key === "Escape") setTagInput("")
+              }}
+            />
+            {/* Autocomplete dropdown */}
+            {tagInput && suggestions.length > 0 && (
+              <div className="absolute left-0 top-full mt-1 z-50 bg-popover border rounded-lg shadow-lg py-1 min-w-[120px]">
+                {suggestions.slice(0, 5).map(t => (
+                  <button key={t} onClick={() => addTag(t)} className="flex items-center gap-1.5 w-full px-3 py-1 text-xs hover:bg-muted text-left">
+                    <Tag className="size-3 text-muted-foreground" /> {t}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Content */}
         <div className="flex-1 px-5 overflow-y-auto">
           <textarea
             ref={contentRef}
@@ -111,21 +166,13 @@ export function NoteEditor({ note, onClose, onUpdate, onDelete, onTogglePin }: P
                 const lines = content.slice(0, e.currentTarget.selectionStart).split("\n")
                 const lastLine = lines[lines.length - 1]
                 const listMatch = lastLine.match(/^(\s*[-*]\s)/)
-                const checkMatch = lastLine.match(/^(\s*- \[[ x]\] )/)
-                if (checkMatch && lastLine.trim() === "- [ ]") {
-                  e.preventDefault()
-                  const cursor = e.currentTarget.selectionStart
-                  const newContent = content.slice(0, cursor - lastLine.length) + content.slice(cursor)
-                  handleContentChange(newContent)
-                } else if (listMatch) {
+                if (listMatch) {
                   e.preventDefault()
                   const cursor = e.currentTarget.selectionStart
                   const insert = "\n" + listMatch[1]
                   handleContentChange(content.slice(0, cursor) + insert + content.slice(cursor))
                   setTimeout(() => {
-                    if (contentRef.current) {
-                      contentRef.current.selectionStart = contentRef.current.selectionEnd = cursor + insert.length
-                    }
+                    if (contentRef.current) contentRef.current.selectionStart = contentRef.current.selectionEnd = cursor + insert.length
                   }, 0)
                 }
               }
@@ -134,28 +181,22 @@ export function NoteEditor({ note, onClose, onUpdate, onDelete, onTogglePin }: P
           />
         </div>
 
+        {/* Footer */}
         <div className={cn("flex items-center justify-between px-4 py-2 border-t shrink-0", colorCfg.border)}>
           <div className="flex items-center gap-1">
-            <div className="flex items-center gap-1">
-              {(Object.entries(NOTE_COLORS) as [NoteColor, typeof NOTE_COLORS[NoteColor]][]).map(([key, cfg]) => (
-                <button
-                  key={key}
-                  onClick={() => handleColorChange(key)}
-                  className={cn(
-                    "size-5 rounded-full border-2 transition-transform hover:scale-110",
-                    cfg.bg.split(" ")[0],
-                    note.color === key ? "border-primary scale-110" : "border-transparent"
-                  )}
-                  title={cfg.label}
-                  style={key === "default" ? { background: "var(--card)" } : undefined}
-                />
-              ))}
-            </div>
+            {(Object.entries(NOTE_COLORS) as [NoteColor, typeof NOTE_COLORS[NoteColor]][]).map(([key, cfg]) => (
+              <button
+                key={key}
+                onClick={() => handleColorChange(key)}
+                className={cn("size-5 rounded-full border-2 transition-transform hover:scale-110", cfg.bg.split(" ")[0], note.color === key ? "border-primary scale-110" : "border-transparent")}
+                title={cfg.label}
+                style={key === "default" ? { background: "var(--card)" } : undefined}
+              />
+            ))}
           </div>
-
           <div className="flex items-center gap-2">
             <span className="text-[10px] text-muted-foreground">
-              {content.length} chars · editado {formatDistanceToNow(parseISO(note.updatedAt), { addSuffix: true, locale: ptBR })}
+              {content.length} chars · {formatDistanceToNow(parseISO(note.updatedAt), { addSuffix: true, locale: ptBR })}
             </span>
             <Button variant="ghost" size="icon" className="size-7" onClick={() => onTogglePin(note.id)} title={note.pinned ? "Desafixar" : "Fixar"}>
               {note.pinned ? <PinOff className="size-3.5 text-primary" /> : <Pin className="size-3.5" />}

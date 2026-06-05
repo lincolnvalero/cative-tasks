@@ -7,23 +7,24 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
-import { Plus, Search, Pin, Trash2, Grid3x3, List, PinOff } from "lucide-react"
+import { Plus, Search, Pin, Trash2, Grid3x3, List, PinOff, Tag, X } from "lucide-react"
 import { formatDistanceToNow, parseISO } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { showConfirm } from "@/components/ConfirmDialog"
 import { toast } from "sonner"
 
 export function NotesPage() {
-  const { notes, loading, createNote, updateNote, deleteNote, togglePin } = useNotesStore()
+  const { notes, loading, allTags, createNote, updateNote, deleteNote, togglePin } = useNotesStore()
   const [editingNote, setEditingNote] = useState<Note | null>(null)
   const [search, setSearch] = useState("")
+  const [activeTag, setActiveTag] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
 
-  const filtered = notes.filter(n =>
-    !search ||
-    n.title.toLowerCase().includes(search.toLowerCase()) ||
-    n.content.toLowerCase().includes(search.toLowerCase())
-  )
+  const filtered = notes.filter(n => {
+    const matchSearch = !search || n.title.toLowerCase().includes(search.toLowerCase()) || n.content.toLowerCase().includes(search.toLowerCase())
+    const matchTag = !activeTag || n.tags.includes(activeTag)
+    return matchSearch && matchTag
+  })
 
   const pinned = filtered.filter(n => n.pinned)
   const others = filtered.filter(n => !n.pinned)
@@ -85,6 +86,17 @@ export function NotesPage() {
           <p className="text-xs text-muted-foreground italic">Nota vazia</p>
         )}
 
+        {/* Tags do card */}
+        {note.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-1.5">
+            {note.tags.map(tag => (
+              <span key={tag} onClick={e => { e.stopPropagation(); setActiveTag(activeTag === tag ? null : tag) }} className={cn("text-[10px] px-1.5 py-0.5 rounded-full border cursor-pointer transition-colors", activeTag === tag ? "bg-primary text-primary-foreground border-primary" : "bg-primary/5 text-primary/70 border-primary/20 hover:bg-primary/10")}>
+                #{tag}
+              </span>
+            ))}
+          </div>
+        )}
+
         <div className={cn("flex items-center justify-between mt-2 pt-1", viewMode === "list" && "mt-0 pt-0 shrink-0 ml-auto")}>
           <span className="text-[10px] text-muted-foreground">
             {formatDistanceToNow(parseISO(note.updatedAt), { addSuffix: true, locale: ptBR })}
@@ -125,14 +137,33 @@ export function NotesPage() {
           </Button>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-            <Input placeholder="Buscar notas..." className="pl-8 h-8" value={search} onChange={e => setSearch(e.target.value)} />
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+              <Input placeholder="Buscar notas..." className="pl-8 h-8" value={search} onChange={e => setSearch(e.target.value)} />
+            </div>
+            <Button variant="outline" size="icon" className="size-8 shrink-0" onClick={() => setViewMode(v => v === "grid" ? "list" : "grid")} title="Alternar visualização">
+              {viewMode === "grid" ? <List className="size-4" /> : <Grid3x3 className="size-4" />}
+            </Button>
           </div>
-          <Button variant="outline" size="icon" className="size-8 shrink-0" onClick={() => setViewMode(v => v === "grid" ? "list" : "grid")} title="Alternar visualização">
-            {viewMode === "grid" ? <List className="size-4" /> : <Grid3x3 className="size-4" />}
-          </Button>
+
+          {/* Filtros por tag */}
+          {allTags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 items-center">
+              <Tag className="size-3 text-muted-foreground shrink-0" />
+              {activeTag && (
+                <button onClick={() => setActiveTag(null)} className="text-xs px-2 py-0.5 rounded-full bg-primary text-primary-foreground flex items-center gap-1">
+                  #{activeTag} <X className="size-3" />
+                </button>
+              )}
+              {allTags.filter(t => t !== activeTag).map(tag => (
+                <button key={tag} onClick={() => setActiveTag(tag)} className="text-xs px-2 py-0.5 rounded-full border border-muted-foreground/20 text-muted-foreground hover:border-primary/40 hover:text-primary transition-colors">
+                  #{tag}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {loading && (
@@ -215,6 +246,7 @@ export function NotesPage() {
 
       <NoteEditor
         note={currentNote}
+        allTags={allTags}
         onClose={() => setEditingNote(null)}
         onUpdate={updateNote}
         onDelete={deleteNote}

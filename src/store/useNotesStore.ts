@@ -9,6 +9,7 @@ function mapNote(row: Record<string, unknown>): Note {
     content: row.content as string,
     color: row.color as NoteColor,
     pinned: row.pinned as boolean,
+    tags: (row.tags as string[]) ?? [],
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
   }
@@ -28,9 +29,9 @@ export function useNotesStore() {
     load()
   }, [])
 
-  async function createNote(template?: string): Promise<Note | undefined> {
+  async function createNote(template?: string, initialTags?: string[]): Promise<Note | undefined> {
     const { data } = await supabase.from("ct_notes").insert({
-      title: "", content: template ?? "", color: "default", pinned: false
+      title: "", content: template ?? "", color: "default", pinned: false, tags: initialTags ?? []
     }).select().single()
     if (!data) return
     const note = mapNote(data)
@@ -38,12 +39,13 @@ export function useNotesStore() {
     return note
   }
 
-  async function updateNote(id: string, patch: Partial<Pick<Note, "title" | "content" | "color" | "pinned">>) {
+  async function updateNote(id: string, patch: Partial<Pick<Note, "title" | "content" | "color" | "pinned" | "tags">>) {
     const dbPatch: Record<string, unknown> = { updated_at: new Date().toISOString() }
     if (patch.title !== undefined) dbPatch.title = patch.title
     if (patch.content !== undefined) dbPatch.content = patch.content
     if (patch.color !== undefined) dbPatch.color = patch.color
     if (patch.pinned !== undefined) dbPatch.pinned = patch.pinned
+    if (patch.tags !== undefined) dbPatch.tags = patch.tags
     await supabase.from("ct_notes").update(dbPatch).eq("id", id)
     setNotes(prev => prev.map(n => n.id === id ? { ...n, ...patch, updatedAt: dbPatch.updated_at as string } : n))
   }
@@ -63,5 +65,8 @@ export function useNotesStore() {
     })
   }
 
-  return { notes, loading, createNote, updateNote, deleteNote, togglePin }
+  // All unique tags across notes
+  const allTags = Array.from(new Set(notes.flatMap(n => n.tags))).sort()
+
+  return { notes, loading, allTags, createNote, updateNote, deleteNote, togglePin }
 }
