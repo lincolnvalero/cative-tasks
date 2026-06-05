@@ -52,6 +52,7 @@ export interface Project {
   name: string
   color: string
   emoji: string
+  workspace: Workspace
 }
 
 export interface SavedView {
@@ -93,11 +94,11 @@ export const PROJECT_COLORS = [
 ]
 
 export const DEFAULT_PROJECTS: Project[] = [
-  { id: "p1", name: "Criação",    color: "#6366f1", emoji: "paintbrush" },
-  { id: "p2", name: "Mídia Paga", color: "#f59e0b", emoji: "megaphone" },
-  { id: "p3", name: "Estratégia", color: "#10b981", emoji: "lightbulb" },
-  { id: "p4", name: "Operações",  color: "#3b82f6", emoji: "settings2" },
-  { id: "p5", name: "Clientes",   color: "#ec4899", emoji: "users" },
+  { id: "p1", name: "Criação",    color: "#6366f1", emoji: "paintbrush", workspace: "cative" },
+  { id: "p2", name: "Mídia Paga", color: "#f59e0b", emoji: "megaphone",  workspace: "cative" },
+  { id: "p3", name: "Estratégia", color: "#10b981", emoji: "lightbulb",  workspace: "cative" },
+  { id: "p4", name: "Operações",  color: "#3b82f6", emoji: "settings2",  workspace: "cative" },
+  { id: "p5", name: "Clientes",   color: "#ec4899", emoji: "users",      workspace: "cative" },
 ]
 
 export const DEFAULT_SAVED_VIEWS: SavedView[] = [

@@ -13,7 +13,7 @@ import { Plus, Pencil, Trash2, CheckCircle2, Clock } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 
-const emptyForm = { name: "", emoji: "target", color: PROJECT_COLORS[0] }
+const emptyForm = { name: "", emoji: "target", color: PROJECT_COLORS[0], workspace: "cative" as import("@/types/task").Workspace }
 
 export function ProjectsPage() {
   const { projects, tasks, addProject, updateProject, deleteProject } = useApp()
@@ -29,7 +29,7 @@ export function ProjectsPage() {
 
   function openEdit(project: Project) {
     setEditingProject(project)
-    setForm({ name: project.name, emoji: project.emoji, color: project.color })
+    setForm({ name: project.name, emoji: project.emoji, color: project.color, workspace: project.workspace ?? "cative" })
     setDialogOpen(true)
   }
 

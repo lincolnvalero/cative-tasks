@@ -13,6 +13,7 @@ function mapProject(row: Record<string, unknown>): Project {
     name: row.name as string,
     color: row.color as string,
     emoji: row.emoji as string,
+    workspace: ((row.workspace as string) ?? "cative") as import("@/types/task").Workspace,
   }
 }
 
@@ -460,7 +461,7 @@ export function useTaskStore() {
   async function addProject(projectData: Omit<Project, "id">) {
     try {
       setSaving(true)
-      const { data, error } = await supabase.from("ct_projects").insert({ name: projectData.name, color: projectData.color, emoji: projectData.emoji }).select().single()
+      const { data, error } = await supabase.from("ct_projects").insert({ name: projectData.name, color: projectData.color, emoji: projectData.emoji, workspace: projectData.workspace ?? "cative" }).select().single()
       if (error || !data) {
         toast.error("Erro ao criar projeto")
         return

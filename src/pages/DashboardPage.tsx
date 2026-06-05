@@ -59,7 +59,7 @@ export function DashboardPage() {
           projectIdMap[lp.id] = existing.id
         } else {
           // Criar no Supabase e mapear
-          const newP = await addProject({ name: lp.name, color: lp.color, emoji: lp.emoji })
+          const newP = await addProject({ name: lp.name, color: lp.color, emoji: lp.emoji, workspace: "cative" as import("@/types/task").Workspace })
           if (newP) projectIdMap[lp.id] = newP.id
         }
       }
