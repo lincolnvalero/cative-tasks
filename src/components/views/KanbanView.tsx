@@ -8,13 +8,14 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { TaskDialog } from "@/components/TaskDialog"
 import { ProjectIcon } from "@/components/ProjectIcon"
 import { Plus, CalendarDays, Flag, CheckCircle2, Circle, MessageSquare, CheckSquare, RefreshCw, Check, X as XIcon, PanelRightOpen, Clock } from "lucide-react"
-import { isPast, isToday, parseISO } from "date-fns"
+import { isPast, isToday, parseISO, isThisWeek, addDays, isBefore } from "date-fns"
 import { cn, isTaskStale } from "@/lib/utils"
 import { toast } from "sonner"
 
 const COLUMNS: Status[] = ["todo", "in-progress", "review", "done"]
 
-interface KanbanViewProps { onOpenTask: (task: Task) => void; assigneeFilter?: string[] }
+type DueDateFilter = null | "overdue" | "this-week" | "next-30"
+interface KanbanViewProps { onOpenTask: (task: Task) => void; assigneeFilter?: string[]; dueDateFilter?: DueDateFilter }
 
 // ─── Inline add ───────────────────────────────────────────────────────────────
 function InlineAdd({ status, defaultProjectId }: { status: Status; defaultProjectId: string }) {
@@ -265,16 +266,27 @@ function KanbanCard({ task, onOpenTask }: { task: Task; onOpenTask: (t: Task) =>
 }
 
 // ─── Column ───────────────────────────────────────────────────────────────────
-export function KanbanView({ onOpenTask, assigneeFilter = [] }: KanbanViewProps) {
+export function KanbanView({ onOpenTask, assigneeFilter = [], dueDateFilter = null }: KanbanViewProps) {
   const { tasks, moveTask, activeProjectId, projects: allProjects, activeWorkspace } = useApp()
   const [newStatus, setNewStatus] = useState<Status | null>(null)
   const [dragOverCol, setDragOverCol] = useState<Status | null>(null)
 
   const workspaceTasks = activeWorkspace === "all" ? tasks : tasks.filter(t => t.workspace === activeWorkspace)
   const projectFiltered = activeProjectId ? workspaceTasks.filter(t => t.projectId === activeProjectId) : workspaceTasks
-  const visibleTasks = assigneeFilter.length > 0
+  const afterAssignee = assigneeFilter.length > 0
     ? projectFiltered.filter(t => assigneeFilter.includes(t.assignee ?? ""))
     : projectFiltered
+  const today = new Date()
+  const visibleTasks = dueDateFilter
+    ? afterAssignee.filter(t => {
+        if (!t.dueDate) return false
+        const d = parseISO(t.dueDate)
+        if (dueDateFilter === "overdue") return isPast(d) && !isToday(d) && t.status !== "done"
+        if (dueDateFilter === "this-week") return isThisWeek(d, { weekStartsOn: 1 })
+        if (dueDateFilter === "next-30") return !isPast(d) && isBefore(d, addDays(today, 30))
+        return true
+      })
+    : afterAssignee
   const defaultProjectId = activeProjectId ?? allProjects[0]?.id ?? ""
 
   function handleDrop(e: React.DragEvent, status: Status) {
@@ -286,8 +298,7 @@ export function KanbanView({ onOpenTask, assigneeFilter = [] }: KanbanViewProps)
 
   return (
     <>
-      {/* Mobile: snap horizontal scroll  |  Desktop: grid preenche tela toda */}
-      <div className="flex gap-3 h-full overflow-x-auto pb-4 snap-x snap-mandatory scroll-smooth px-1 md:grid md:grid-cols-4 md:overflow-x-visible md:snap-none">
+      <div className="flex gap-3 h-full overflow-x-auto pb-4 scroll-smooth px-1">
         {COLUMNS.map(status => {
           const config = STATUS_CONFIG[status]
           const colTasks = visibleTasks.filter(t => t.status === status)
@@ -295,7 +306,7 @@ export function KanbanView({ onOpenTask, assigneeFilter = [] }: KanbanViewProps)
           return (
             <div
               key={status}
-              className="flex flex-col gap-2 min-w-[85vw] snap-center md:min-w-0 md:w-auto md:snap-align-none"
+              className="flex flex-col gap-2 min-w-[260px] flex-1 shrink-0"
               onDragOver={e => { e.preventDefault(); setDragOverCol(status) }}
               onDragLeave={() => setDragOverCol(null)}
               onDrop={e => handleDrop(e, status)}

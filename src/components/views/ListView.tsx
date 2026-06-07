@@ -20,7 +20,7 @@ import {
   CheckCircle2, Circle, Plus, RefreshCw, Bookmark, X, Check,
   GripVertical, CalendarDays, Loader2, PanelRightOpen, Copy, Download, Share2,
 } from "lucide-react"
-import { isPast, isToday, parseISO, format } from "date-fns"
+import { isPast, isToday, parseISO, format, isThisWeek, addDays, isBefore } from "date-fns"
 import { isTaskStale } from "@/lib/utils"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -461,15 +461,17 @@ function BulkBar({ selected, onClear, onDelete, onChangeStatus, onChangePriority
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
+type DueDateFilter = null | "overdue" | "this-week" | "next-30"
 interface ListViewProps {
   onOpenTask: (task: Task) => void
   appliedView?: SavedView | null
   todayFilter?: boolean
   noDueDateFilter?: boolean
   assigneeFilter?: string[]
+  dueDateFilter?: DueDateFilter
 }
 
-export function ListView({ onOpenTask, appliedView, todayFilter = false, noDueDateFilter = false, assigneeFilter = [] }: ListViewProps) {
+export function ListView({ onOpenTask, appliedView, todayFilter = false, noDueDateFilter = false, assigneeFilter = [], dueDateFilter = null }: ListViewProps) {
   const { tasks: allTasks, projects, deleteTasks, updateTasks, activeProjectId, addSavedView, reorderTasks, activeWorkspace } = useApp()
   const tasks = activeWorkspace === "all" ? allTasks : allTasks.filter(t => t.workspace === activeWorkspace)
   const [newOpen, setNewOpen] = useState(false)
@@ -501,6 +503,14 @@ export function ListView({ onOpenTask, appliedView, todayFilter = false, noDueDa
         if (t.dueDate) return false
       }
       if (assigneeFilter.length > 0 && !assigneeFilter.includes(t.assignee ?? "")) return false
+      if (dueDateFilter) {
+        const today = new Date()
+        if (!t.dueDate) return false
+        const d = parseISO(t.dueDate)
+        if (dueDateFilter === "overdue" && !(isPast(d) && !isToday(d) && t.status !== "done")) return false
+        if (dueDateFilter === "this-week" && !isThisWeek(d, { weekStartsOn: 1 })) return false
+        if (dueDateFilter === "next-30" && (isPast(d) || !isBefore(d, addDays(today, 30)))) return false
+      }
       if (activeProjectId && t.projectId !== activeProjectId) return false
       if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false
       if (filterStatus !== "all" && t.status !== filterStatus) return false

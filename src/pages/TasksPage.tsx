@@ -9,7 +9,8 @@ import { TaskDialog } from "@/components/TaskDialog"
 import { ShortcutsDialog } from "@/components/ShortcutsDialog"
 import { useApp } from "@/context/AppContext"
 import type { Task } from "@/types/task"
-import { Plus, Kanban, List, CalendarDays, BarChart3, X } from "lucide-react"
+import { Plus, Kanban, List, CalendarDays, BarChart3, X, ChevronDown } from "lucide-react"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { MemberAvatar } from "@/components/MemberAvatar"
 import { cn } from "@/lib/utils"
 import { isToday, isPast, parseISO } from "date-fns"
@@ -27,6 +28,13 @@ export function TasksPage({ onOpenTask, newTaskOpen = false, onNewTaskClose }: P
   const [todayFilter, setTodayFilter] = useState(false)
   const [noDueDateFilter, setNoDueDateFilter] = useState(false)
   const [assigneeFilter, setAssigneeFilter] = useState<string[]>([])
+  type DueDateFilter = null | "overdue" | "this-week" | "next-30"
+  const [dueDateFilter, setDueDateFilter] = useState<DueDateFilter>(null)
+  const DUE_DATE_LABELS: Record<NonNullable<DueDateFilter>, string> = {
+    overdue: "Vencidas",
+    "this-week": "Esta semana",
+    "next-30": "Próx. 30 dias",
+  }
 
   // Contagem para os chips
   const noDueDateCount = tasks.filter(t => !t.dueDate && t.status !== "done").length
@@ -109,8 +117,8 @@ export function TasksPage({ onOpenTask, newTaskOpen = false, onNewTaskClose }: P
           <div className="flex gap-1.5 flex-wrap">
             {/* Chip: Todas */}
             <button
-              onClick={() => { setTodayFilter(false); setNoDueDateFilter(false); setActiveViewId(null) }}
-              className={cn("text-xs px-3 py-1 rounded-full border transition-colors", !todayFilter && !noDueDateFilter && !activeViewId ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted")}
+              onClick={() => { setTodayFilter(false); setNoDueDateFilter(false); setDueDateFilter(null); setActiveViewId(null) }}
+              className={cn("text-xs px-3 py-1 rounded-full border transition-colors", !todayFilter && !noDueDateFilter && !dueDateFilter && !activeViewId ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted")}
             >
               Todas
             </button>
@@ -134,6 +142,36 @@ export function TasksPage({ onOpenTask, newTaskOpen = false, onNewTaskClose }: P
                 </span>
               </button>
             )}
+            {/* Chip: filtro por prazo */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className={cn(
+                    "text-xs px-3 py-1 rounded-full border transition-colors flex items-center gap-1",
+                    dueDateFilter ? "bg-blue-500 text-white border-blue-500" : "border-border hover:bg-muted"
+                  )}
+                >
+                  📅 {dueDateFilter ? DUE_DATE_LABELS[dueDateFilter] : "Prazo"}
+                  <ChevronDown className="size-3" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem onClick={() => setDueDateFilter(dueDateFilter === "overdue" ? null : "overdue")}>
+                  {dueDateFilter === "overdue" && "✓ "}Vencidas
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setDueDateFilter(dueDateFilter === "this-week" ? null : "this-week")}>
+                  {dueDateFilter === "this-week" && "✓ "}Esta semana
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setDueDateFilter(dueDateFilter === "next-30" ? null : "next-30")}>
+                  {dueDateFilter === "next-30" && "✓ "}Próximos 30 dias
+                </DropdownMenuItem>
+                {dueDateFilter && (
+                  <DropdownMenuItem onClick={() => setDueDateFilter(null)} className="text-muted-foreground">
+                    Limpar filtro
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
             {/* Chips: por responsável */}
             {members.map(m => {
               const active = assigneeFilter.includes(m.name)
@@ -191,11 +229,11 @@ export function TasksPage({ onOpenTask, newTaskOpen = false, onNewTaskClose }: P
           </TabsList>
 
           <TabsContent value="kanban" className="flex-1 overflow-auto mt-3">
-            <KanbanView onOpenTask={onOpenTask} assigneeFilter={assigneeFilter} />
+            <KanbanView onOpenTask={onOpenTask} assigneeFilter={assigneeFilter} dueDateFilter={dueDateFilter} />
           </TabsContent>
 
           <TabsContent value="list" className="mt-3">
-            <ListView onOpenTask={onOpenTask} appliedView={appliedView} todayFilter={todayFilter} noDueDateFilter={noDueDateFilter} assigneeFilter={assigneeFilter} />
+            <ListView onOpenTask={onOpenTask} appliedView={appliedView} todayFilter={todayFilter} noDueDateFilter={noDueDateFilter} assigneeFilter={assigneeFilter} dueDateFilter={dueDateFilter} />
           </TabsContent>
 
           <TabsContent value="calendar" className="mt-3" style={{ height: "calc(100vh - 240px)" }}>
