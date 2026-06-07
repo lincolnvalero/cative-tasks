@@ -298,8 +298,8 @@ export function KanbanView({ onOpenTask, assigneeFilter = [], dueDateFilter = nu
 
   return (
     <>
-      {/* Mobile: 1 coluna por vez com snap scroll | Desktop: grid 4 cols com scroll se precisar */}
-      <div className="flex gap-3 h-full overflow-x-auto pb-4 snap-x snap-mandatory scroll-smooth px-1 md:grid md:grid-cols-4 md:snap-none md:overflow-auto">
+      {/* Mobile: snap 1 col por vez | Desktop: 4 cols com min-width, scrolla se necessário */}
+      <div className="flex gap-3 h-full overflow-x-auto pb-4 snap-x snap-mandatory scroll-smooth px-1 md:snap-none">
         {COLUMNS.map(status => {
           const config = STATUS_CONFIG[status]
           const colTasks = visibleTasks.filter(t => t.status === status)
@@ -307,7 +307,7 @@ export function KanbanView({ onOpenTask, assigneeFilter = [], dueDateFilter = nu
           return (
             <div
               key={status}
-              className="flex flex-col gap-2 min-w-[82vw] snap-center md:min-w-[200px] md:snap-align-none"
+              className="flex flex-col gap-2 min-w-[82vw] w-[82vw] snap-center md:min-w-[260px] md:w-[260px] md:flex-1 md:snap-align-none"
               onDragOver={e => { e.preventDefault(); setDragOverCol(status) }}
               onDragLeave={() => setDragOverCol(null)}
               onDrop={e => handleDrop(e, status)}
