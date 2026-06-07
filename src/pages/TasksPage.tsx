@@ -228,7 +228,7 @@ export function TasksPage({ onOpenTask, newTaskOpen = false, onNewTaskClose }: P
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="kanban" className="flex-1 overflow-auto mt-3">
+          <TabsContent value="kanban" className="flex-1 min-h-0 mt-3">
             <KanbanView onOpenTask={onOpenTask} assigneeFilter={assigneeFilter} dueDateFilter={dueDateFilter} />
           </TabsContent>
 
