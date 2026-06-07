@@ -11,7 +11,10 @@ interface Props {
 }
 
 export function WorkloadView({ onOpenTask }: Props) {
-  const { tasks, projects } = useApp()
+  const { tasks: allTasks, projects, activeProjectId, activeWorkspace } = useApp()
+
+  const workspaceTasks = activeWorkspace === "all" ? allTasks : allTasks.filter(t => t.workspace === activeWorkspace)
+  const tasks = activeProjectId ? workspaceTasks.filter(t => t.projectId === activeProjectId) : workspaceTasks
 
   // Group by week
   const byWeek: Record<string, Task[]> = {}

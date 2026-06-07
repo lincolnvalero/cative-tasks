@@ -18,9 +18,9 @@ import { ProjectIcon } from "@/components/ProjectIcon"
 import {
   Trash2, Search, Flag, ArrowUpDown,
   CheckCircle2, Circle, Plus, RefreshCw, Bookmark, X, Check,
-  GripVertical, CalendarDays, Loader2, PanelRightOpen, Copy, Download,
+  GripVertical, CalendarDays, Loader2, PanelRightOpen, Copy, Download, Share2,
 } from "lucide-react"
-import { isPast, isToday, parseISO } from "date-fns"
+import { isPast, isToday, parseISO, format } from "date-fns"
 import { isTaskStale } from "@/lib/utils"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -100,6 +100,15 @@ function TaskRow({
     e.stopPropagation()
     await duplicateTask(task.id)
     toast.success("Tarefa duplicada!")
+  }
+
+  function handleCopyWhatsApp(e: React.MouseEvent) {
+    e.stopPropagation()
+    const prazo = task.dueDate ? format(parseISO(task.dueDate), "dd/MM/yyyy") : "—"
+    const responsavel = task.assignee ?? "—"
+    const text = `*Tarefa:* ${task.title}\n*Responsável:* ${responsavel}\n*Prazo:* ${prazo}`
+    navigator.clipboard.writeText(text)
+    toast.success("Copiado para a área de transferência!")
   }
 
   function handleToggleDone(e: React.MouseEvent) {
@@ -313,7 +322,10 @@ function TaskRow({
         </td>
 
         {/* Actions */}
-        <td className="px-2 py-3 w-16 flex items-center gap-1" onClick={e => e.stopPropagation()}>
+        <td className="px-2 py-3 w-24 flex items-center gap-0.5" onClick={e => e.stopPropagation()}>
+          <Button variant="ghost" size="icon" className="size-7 hover:text-green-600" onClick={handleCopyWhatsApp} title="Copiar para WhatsApp">
+            <Share2 className="size-3.5" />
+          </Button>
           <Button variant="ghost" size="icon" className="size-7 hover:text-blue-500" onClick={handleDuplicate} title="Duplicar">
             <Copy className="size-3.5" />
           </Button>

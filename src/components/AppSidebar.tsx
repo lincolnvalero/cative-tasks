@@ -6,7 +6,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { useApp } from "@/context/AppContext"
 import type { Status } from "@/types/task"
-import { LayoutDashboard, CheckSquare, FolderKanban, Zap, StickyNote, User, Building2 } from "lucide-react"
+import { LayoutDashboard, CheckSquare, FolderKanban, Zap, StickyNote, User, Building2, LayoutList } from "lucide-react"
 import { ProjectIcon } from "@/components/ProjectIcon"
 import { cn } from "@/lib/utils"
 
@@ -125,6 +125,18 @@ export function AppSidebar({ page, onNavigate }: Props) {
         <SidebarGroup>
           <SidebarGroupLabel>Projetos</SidebarGroupLabel>
           <SidebarMenu>
+            {/* Todos */}
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                isActive={page === "tasks" && !activeProjectId}
+                onClick={() => { setActiveProjectId(null); onNavigate("tasks") }}
+                className="gap-2"
+              >
+                <LayoutList className="size-4 shrink-0" />
+                <span>Todos</span>
+                {activeTasks > 0 && <span className="ml-auto text-xs text-muted-foreground">{activeTasks}</span>}
+              </SidebarMenuButton>
+            </SidebarMenuItem>
             {/* Pessoal */}
             {projects.filter(p => p.workspace === "personal").length > 0 && (
               <div className="px-2 pt-1 pb-0.5">

@@ -83,7 +83,7 @@ export function TasksPage({ onOpenTask, newTaskOpen = false, onNewTaskClose }: P
           <div className="flex flex-col gap-1 min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold">Tarefas</h1>
             <div className="flex flex-wrap items-center gap-1.5">
-              {activeProject && (
+              {activeProject ? (
                 <button
                   onClick={() => setActiveProjectId(null)}
                   className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border text-foreground hover:bg-muted transition-colors"
@@ -92,6 +92,8 @@ export function TasksPage({ onOpenTask, newTaskOpen = false, onNewTaskClose }: P
                   <span className="size-1.5 rounded-full" style={{ background: activeProject.color }} />
                   {activeProject.name} <X className="size-3" />
                 </button>
+              ) : (
+                <span className="text-xs text-muted-foreground">Todos os projetos</span>
               )}
             </div>
           </div>
