@@ -10,6 +10,7 @@ import { ShortcutsDialog } from "@/components/ShortcutsDialog"
 import { useApp } from "@/context/AppContext"
 import type { Task } from "@/types/task"
 import { Plus, Kanban, List, CalendarDays, BarChart3, X } from "lucide-react"
+import { MemberAvatar } from "@/components/MemberAvatar"
 import { cn } from "@/lib/utils"
 import { isToday, isPast, parseISO } from "date-fns"
 
@@ -20,11 +21,12 @@ interface Props {
 }
 
 export function TasksPage({ onOpenTask, newTaskOpen = false, onNewTaskClose }: Props) {
-  const { projects, activeProjectId, setActiveProjectId, savedViews, deleteSavedView, tasks } = useApp()
+  const { projects, activeProjectId, setActiveProjectId, savedViews, deleteSavedView, tasks, members } = useApp()
   const [localNewOpen, setLocalNewOpen] = useState(false)
   const [activeViewId, setActiveViewId] = useState<string | null>(null)
   const [todayFilter, setTodayFilter] = useState(false)
   const [noDueDateFilter, setNoDueDateFilter] = useState(false)
+  const [assigneeFilter, setAssigneeFilter] = useState<string[]>([])
 
   // Contagem para os chips
   const noDueDateCount = tasks.filter(t => !t.dueDate && t.status !== "done").length
@@ -130,6 +132,21 @@ export function TasksPage({ onOpenTask, newTaskOpen = false, onNewTaskClose }: P
                 </span>
               </button>
             )}
+            {/* Chips: por responsável */}
+            {members.map(m => {
+              const active = assigneeFilter.includes(m.name)
+              return (
+                <button
+                  key={m.id}
+                  onClick={() => setAssigneeFilter(prev => active ? prev.filter(n => n !== m.name) : [...prev, m.name])}
+                  className={cn("text-xs px-2.5 py-1 rounded-full border transition-colors flex items-center gap-1.5", active ? "text-white border-transparent" : "border-border hover:bg-muted")}
+                  style={active ? { background: m.color, borderColor: m.color } : {}}
+                >
+                  <MemberAvatar member={m} size="xs" />
+                  {m.name}
+                </button>
+              )
+            })}
             {savedViews.map(view => (
               <div key={view.id} className="flex items-center">
                 <button
@@ -172,11 +189,11 @@ export function TasksPage({ onOpenTask, newTaskOpen = false, onNewTaskClose }: P
           </TabsList>
 
           <TabsContent value="kanban" className="flex-1 overflow-auto mt-3">
-            <KanbanView onOpenTask={onOpenTask} />
+            <KanbanView onOpenTask={onOpenTask} assigneeFilter={assigneeFilter} />
           </TabsContent>
 
           <TabsContent value="list" className="mt-3">
-            <ListView onOpenTask={onOpenTask} appliedView={appliedView} todayFilter={todayFilter} noDueDateFilter={noDueDateFilter} />
+            <ListView onOpenTask={onOpenTask} appliedView={appliedView} todayFilter={todayFilter} noDueDateFilter={noDueDateFilter} assigneeFilter={assigneeFilter} />
           </TabsContent>
 
           <TabsContent value="calendar" className="mt-3" style={{ height: "calc(100vh - 240px)" }}>

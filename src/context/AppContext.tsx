@@ -1,6 +1,7 @@
-import { createContext, useContext, useState, type ReactNode } from "react"
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import { useTaskStore } from "@/store/useTaskStore"
-import type { Task, Project, Status, SavedView, Workspace } from "@/types/task"
+import { useMembersStore } from "@/store/useMembersStore"
+import type { Task, Project, Status, SavedView, Workspace, Member } from "@/types/task"
 
 interface AppContextValue {
   tasks: Task[]
@@ -32,16 +33,24 @@ interface AppContextValue {
   addTaskLink: (taskId: string, title: string, url: string) => void
   deleteTaskLink: (taskId: string, linkId: string) => void
   duplicateTask: (id: string) => Promise<Task | undefined>
+  // Members
+  members: Member[]
+  membersLoading: boolean
+  addMember: (name: string) => Promise<Member | undefined>
+  removeMember: (id: string) => Promise<void>
 }
 
 const AppContext = createContext<AppContextValue | null>(null)
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const store = useTaskStore()
+  const membersStore = useMembersStore()
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null)
   const [activeWorkspace, setActiveWorkspace] = useState<Workspace | "all">(() => {
     return (localStorage.getItem("lincoln-workspace") as Workspace | "all") ?? "all"
   })
+
+  useEffect(() => { membersStore.fetchMembers() }, [])
 
   function handleSetWorkspace(w: Workspace | "all") {
     setActiveWorkspace(w)
@@ -49,7 +58,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AppContext.Provider value={{ ...store, activeProjectId, setActiveProjectId, activeWorkspace, setActiveWorkspace: handleSetWorkspace }}>
+    <AppContext.Provider value={{
+      ...store,
+      activeProjectId, setActiveProjectId,
+      activeWorkspace, setActiveWorkspace: handleSetWorkspace,
+      members: membersStore.members,
+      membersLoading: membersStore.loading,
+      addMember: membersStore.addMember,
+      removeMember: membersStore.removeMember,
+    }}>
       {children}
     </AppContext.Provider>
   )

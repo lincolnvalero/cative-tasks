@@ -14,7 +14,7 @@ import { toast } from "sonner"
 
 const COLUMNS: Status[] = ["todo", "in-progress", "review", "done"]
 
-interface KanbanViewProps { onOpenTask: (task: Task) => void }
+interface KanbanViewProps { onOpenTask: (task: Task) => void; assigneeFilter?: string[] }
 
 // ─── Inline add ───────────────────────────────────────────────────────────────
 function InlineAdd({ status, defaultProjectId }: { status: Status; defaultProjectId: string }) {
@@ -265,13 +265,16 @@ function KanbanCard({ task, onOpenTask }: { task: Task; onOpenTask: (t: Task) =>
 }
 
 // ─── Column ───────────────────────────────────────────────────────────────────
-export function KanbanView({ onOpenTask }: KanbanViewProps) {
+export function KanbanView({ onOpenTask, assigneeFilter = [] }: KanbanViewProps) {
   const { tasks, moveTask, activeProjectId, projects: allProjects, activeWorkspace } = useApp()
   const [newStatus, setNewStatus] = useState<Status | null>(null)
   const [dragOverCol, setDragOverCol] = useState<Status | null>(null)
 
   const workspaceTasks = activeWorkspace === "all" ? tasks : tasks.filter(t => t.workspace === activeWorkspace)
-  const visibleTasks = activeProjectId ? workspaceTasks.filter(t => t.projectId === activeProjectId) : workspaceTasks
+  const projectFiltered = activeProjectId ? workspaceTasks.filter(t => t.projectId === activeProjectId) : workspaceTasks
+  const visibleTasks = assigneeFilter.length > 0
+    ? projectFiltered.filter(t => assigneeFilter.includes(t.assignee ?? ""))
+    : projectFiltered
   const defaultProjectId = activeProjectId ?? allProjects[0]?.id ?? ""
 
   function handleDrop(e: React.DragEvent, status: Status) {

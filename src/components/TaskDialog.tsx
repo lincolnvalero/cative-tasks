@@ -11,6 +11,7 @@ import { STATUS_CONFIG, PRIORITY_CONFIG } from "@/types/task"
 import { User, Building2 } from "lucide-react"
 import { X } from "lucide-react"
 import { ProjectIcon } from "@/components/ProjectIcon"
+import { MemberAvatar } from "@/components/MemberAvatar"
 import { toast } from "sonner"
 
 interface TaskDialogProps {
@@ -29,10 +30,11 @@ const emptyForm = {
   dueDate: "",
   tags: [] as string[],
   workspace: "cative" as Workspace,
+  assignee: null as string | null,
 }
 
 export function TaskDialog({ open, onClose, task, defaultStatus }: TaskDialogProps) {
-  const { addTask, updateTask, projects, activeProjectId, tasks, activeWorkspace } = useApp()
+  const { addTask, updateTask, projects, activeProjectId, tasks, activeWorkspace, members } = useApp()
   const [form, setForm] = useState(emptyForm)
   const [tagInput, setTagInput] = useState("")
 
@@ -50,6 +52,7 @@ export function TaskDialog({ open, onClose, task, defaultStatus }: TaskDialogPro
         dueDate: task.dueDate ?? "",
         tags: task.tags,
         workspace: task.workspace ?? "cative",
+        assignee: task.assignee ?? null,
       })
     } else {
       const defaultProject = activeProjectId ?? projects[0]?.id ?? ""
@@ -70,7 +73,7 @@ export function TaskDialog({ open, onClose, task, defaultStatus }: TaskDialogPro
       updateTask(task.id, payload)
       toast.success("Tarefa atualizada")
     } else {
-      addTask({ ...payload, recurring: null, position: 0, assignee: null, workspace: form.workspace })
+      addTask({ ...payload, recurring: null, position: 0, assignee: form.assignee, workspace: form.workspace })
       toast.success("Tarefa criada!")
     }
     onClose()
@@ -177,14 +180,47 @@ export function TaskDialog({ open, onClose, task, defaultStatus }: TaskDialogPro
             </div>
           </div>
 
-          {/* Data de entrega: largura total */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs text-muted-foreground">Data de entrega</label>
-            <Input
-              type="date"
-              value={form.dueDate}
-              onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))}
-            />
+          {/* Data de entrega + Responsável: 2 colunas */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs text-muted-foreground">Data de entrega</label>
+              <Input
+                type="date"
+                value={form.dueDate}
+                onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs text-muted-foreground">Responsável</label>
+              <Select
+                value={form.assignee ?? "none"}
+                onValueChange={v => setForm(f => ({ ...f, assignee: v === "none" ? null : v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue>
+                    {form.assignee ? (
+                      <span className="flex items-center gap-1.5">
+                        <MemberAvatar member={members.find(m => m.name === form.assignee)} size="xs" />
+                        {form.assignee}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground text-xs">Ninguém</span>
+                    )}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none" className="text-xs">Ninguém</SelectItem>
+                  {members.map(m => (
+                    <SelectItem key={m.id} value={m.name} className="text-xs">
+                      <span className="flex items-center gap-2">
+                        <MemberAvatar member={m} size="xs" />
+                        {m.name}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <div className="flex flex-col gap-1.5">

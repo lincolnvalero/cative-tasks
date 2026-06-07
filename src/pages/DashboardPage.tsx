@@ -5,7 +5,8 @@ import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
 import { STATUS_CONFIG, PRIORITY_CONFIG } from "@/types/task"
 import type { Status, Priority, Task } from "@/types/task"
-import { CheckCircle2, Clock, AlertTriangle, ListTodo, TrendingUp, Flame, Upload, Zap } from "lucide-react"
+import { CheckCircle2, Clock, AlertTriangle, ListTodo, TrendingUp, Flame, Upload, Zap, Users } from "lucide-react"
+import { MemberAvatar } from "@/components/MemberAvatar"
 import { ProjectIcon } from "@/components/ProjectIcon"
 import { isPast, parseISO, format, isThisWeek, isToday } from "date-fns"
 import { ptBR } from "date-fns/locale"
@@ -33,7 +34,7 @@ const PRIORITY_COLORS: Record<Priority, string> = {
 }
 
 export function DashboardPage() {
-  const { tasks, projects, addTask, addComment, addChecklistItem, addProject } = useApp()
+  const { tasks, projects, addTask, addComment, addChecklistItem, addProject, members } = useApp()
 
   // Detect localStorage data — tarefas E projetos
   const [localTasks, setLocalTasks] = useState<Task[]>(() => {
@@ -262,6 +263,54 @@ export function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Por responsável */}
+      {members.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Users className="size-4" /> Por responsável
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {members.map(m => {
+                const mt = tasks.filter(t => t.assignee === m.name)
+                const mDone = mt.filter(t => t.status === "done").length
+                const mInProgress = mt.filter(t => t.status === "in-progress").length
+                const mOverdue = mt.filter(t => t.dueDate && t.status !== "done" && isPast(parseISO(t.dueDate))).length
+                const mPct = mt.length > 0 ? Math.round((mDone / mt.length) * 100) : 0
+                return (
+                  <div key={m.id} className="flex flex-col gap-2 p-3 rounded-xl border bg-muted/20">
+                    <div className="flex items-center gap-2">
+                      <MemberAvatar member={m} size="md" />
+                      <div className="min-w-0">
+                        <p className="font-semibold text-sm truncate">{m.name}</p>
+                        <p className="text-xs text-muted-foreground">{mt.length} tarefa{mt.length !== 1 ? "s" : ""}</p>
+                      </div>
+                      <span className="ml-auto text-sm font-bold" style={{ color: m.color }}>{mPct}%</span>
+                    </div>
+                    <Progress value={mPct} className="h-1.5" style={{ "--progress-color": m.color } as React.CSSProperties} />
+                    <div className="flex gap-3 text-xs">
+                      <span className="flex items-center gap-1 text-green-600">
+                        <CheckCircle2 className="size-3" />{mDone} ok
+                      </span>
+                      <span className="flex items-center gap-1 text-yellow-600">
+                        <Clock className="size-3" />{mInProgress} andamento
+                      </span>
+                      {mOverdue > 0 && (
+                        <span className="flex items-center gap-1 text-red-500">
+                          <AlertTriangle className="size-3" />{mOverdue} atrasada{mOverdue > 1 ? "s" : ""}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Projects progress + urgent */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

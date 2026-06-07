@@ -454,9 +454,10 @@ interface ListViewProps {
   appliedView?: SavedView | null
   todayFilter?: boolean
   noDueDateFilter?: boolean
+  assigneeFilter?: string[]
 }
 
-export function ListView({ onOpenTask, appliedView, todayFilter = false, noDueDateFilter = false }: ListViewProps) {
+export function ListView({ onOpenTask, appliedView, todayFilter = false, noDueDateFilter = false, assigneeFilter = [] }: ListViewProps) {
   const { tasks: allTasks, projects, deleteTasks, updateTasks, activeProjectId, addSavedView, reorderTasks, activeWorkspace } = useApp()
   const tasks = activeWorkspace === "all" ? allTasks : allTasks.filter(t => t.workspace === activeWorkspace)
   const [newOpen, setNewOpen] = useState(false)
@@ -487,6 +488,7 @@ export function ListView({ onOpenTask, appliedView, todayFilter = false, noDueDa
         if (t.status === "done") return false
         if (t.dueDate) return false
       }
+      if (assigneeFilter.length > 0 && !assigneeFilter.includes(t.assignee ?? "")) return false
       if (activeProjectId && t.projectId !== activeProjectId) return false
       if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false
       if (filterStatus !== "all" && t.status !== filterStatus) return false

@@ -1,4 +1,11 @@
 export type Status = "todo" | "in-progress" | "review" | "done"
+
+export interface Member {
+  id: string
+  name: string
+  color: string
+  initials: string
+}
 export type Priority = "none" | "low" | "medium" | "high" | "urgent"
 export type Recurring = "daily" | "weekly" | "biweekly" | "monthly" | null
 export type Workspace = "personal" | "cative"
