@@ -19,7 +19,7 @@ import {
   Trash2, Search, Flag, ArrowUpDown,
   CheckCircle2, Circle, Plus, RefreshCw, Bookmark, X, Check,
   GripVertical, CalendarDays, Loader2, PanelRightOpen, Copy, Download, Share2,
-  MoreHorizontal, ChevronRight,
+  MoreHorizontal, ChevronRight, ClipboardCopy,
 } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
 import { ChevronDown } from "lucide-react"
@@ -796,6 +796,17 @@ export function ListView({ onOpenTask, appliedView, todayFilter = false, noDueDa
     toast.success("CSV exportado!")
   }
 
+  function copyWhatsApp() {
+    const lines = filtered.map(t => {
+      const prazo = t.dueDate ? format(parseISO(t.dueDate), "dd/MM/yyyy") : "—"
+      const responsavel = t.assignee ?? "—"
+      return `• *${t.title}*\n  └ Responsável: ${responsavel} | Prazo: ${prazo}`
+    })
+    const text = lines.join("\n")
+    navigator.clipboard.writeText(text)
+    toast.success(`${filtered.length} tarefa${filtered.length !== 1 ? "s" : ""} copiada${filtered.length !== 1 ? "s" : ""}!`)
+  }
+
   return (
     <>
       <div className="flex flex-col gap-4">
@@ -835,6 +846,9 @@ export function ListView({ onOpenTask, appliedView, todayFilter = false, noDueDa
           )}
           <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs" onClick={exportCSV}>
             <Download className="size-3.5" /> CSV
+          </Button>
+          <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs" onClick={copyWhatsApp} title="Copiar lista para WhatsApp">
+            <ClipboardCopy className="size-3.5" /> Copiar
           </Button>
         </div>
 

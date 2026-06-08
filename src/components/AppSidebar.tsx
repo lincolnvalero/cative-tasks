@@ -10,6 +10,26 @@ import { LayoutDashboard, CheckSquare, FolderKanban, Zap, StickyNote, User, Buil
 import { ProjectIcon } from "@/components/ProjectIcon"
 import { cn } from "@/lib/utils"
 
+function CollapseButton() {
+  const { toggleSidebar, open } = useSidebar()
+  return (
+    <button
+      onClick={toggleSidebar}
+      className="w-full h-8 rounded-lg flex items-center justify-center gap-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors border border-transparent hover:border-border"
+      title={open ? "Recolher menu" : "Expandir menu"}
+    >
+      {open ? (
+        <>
+          <PanelLeftClose className="size-4 shrink-0" />
+          <span>Recolher menu</span>
+        </>
+      ) : (
+        <PanelLeftOpen className="size-4 shrink-0" />
+      )}
+    </button>
+  )
+}
+
 type Page = "dashboard" | "tasks" | "projects" | "notes"
 
 interface Props {
@@ -210,11 +230,7 @@ export function AppSidebar({ page, onNavigate }: Props) {
         <div className="px-2 py-1 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
           {tasks.filter(t => t.status === "done").length} de {tasks.length} tarefas concluídas
         </div>
-        <SidebarTrigger className="w-full h-8 rounded-lg flex items-center justify-center gap-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors border border-transparent hover:border-border group-data-[collapsible=icon]:justify-center">
-          <PanelLeftClose className="size-4 shrink-0 group-data-[collapsible=icon]:hidden" />
-          <span className="group-data-[collapsible=icon]:hidden">Recolher menu</span>
-          <PanelLeftOpen className="size-4 shrink-0 hidden group-data-[collapsible=icon]:block" />
-        </SidebarTrigger>
+        <CollapseButton />
       </SidebarFooter>
     </Sidebar>
   )
