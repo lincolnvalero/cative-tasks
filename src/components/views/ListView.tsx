@@ -371,19 +371,42 @@ function TaskRow({
 
 // ─── Inline add row ──────────────────────────────────────────────────────────
 function InlineAddRow({ activeProjectId, defaultProjectId }: { activeProjectId: string | null; defaultProjectId: string }) {
-  const { addTask, tasks } = useApp()
+  const { addTask, tasks, projects, members, activeWorkspace } = useApp()
   const [active, setActive] = useState(false)
   const [title, setTitle] = useState("")
+  const [status, setStatus] = useState<Status>("todo")
+  const [priority, setPriority] = useState<Priority>("none")
+  const [projectId, setProjectId] = useState<string>(activeProjectId ?? defaultProjectId)
+  const [dueDate, setDueDate] = useState<string>("")
+  const [assignee, setAssignee] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  function activate() { setActive(true); setTimeout(() => inputRef.current?.focus(), 30) }
+  function activate() {
+    setProjectId(activeProjectId ?? defaultProjectId)
+    setActive(true)
+    setTimeout(() => inputRef.current?.focus(), 30)
+  }
+
+  function reset() {
+    setTitle(""); setStatus("todo"); setPriority("none")
+    setProjectId(activeProjectId ?? defaultProjectId)
+    setDueDate(""); setAssignee(null)
+  }
+
+  const workspace = (() => {
+    const proj = projects.find(p => p.id === (activeProjectId ?? projectId))
+    if (proj?.workspace) return proj.workspace as "cative" | "personal"
+    if (activeWorkspace === "personal") return "personal"
+    return "cative"
+  })()
 
   async function save() {
-    if (!title.trim()) { setActive(false); return }
+    if (!title.trim()) { setActive(false); reset(); return }
     await addTask({
-      title: title.trim(), description: "", status: "todo", priority: "none",
-      projectId: activeProjectId ?? defaultProjectId, dueDate: null, tags: [], recurring: null,
-      position: tasks.length, assignee: null, workspace: "cative" as const,
+      title: title.trim(), description: "", status, priority,
+      projectId: activeProjectId ?? projectId,
+      dueDate: dueDate || null, tags: [], recurring: null,
+      position: tasks.length, assignee, workspace,
     })
     toast.success("Tarefa criada")
     setTitle("")
@@ -392,26 +415,25 @@ function InlineAddRow({ activeProjectId, defaultProjectId }: { activeProjectId: 
 
   function handlePaste(e: React.ClipboardEvent<HTMLInputElement>) {
     const text = e.clipboardData.getData("text")
-    // Detect multi-line or bullet-list paste
     const lines = text
       .split(/\n/)
       .map(l => l.replace(/^[\-\*\•\·\◦\▪\▸\>\d+[\.\)]\s*]+/, "").trim())
       .filter(Boolean)
 
-    if (lines.length <= 1) return // normal paste, let default handle it
+    if (lines.length <= 1) return
 
     e.preventDefault()
     ;(async () => {
       for (let i = 0; i < lines.length; i++) {
         await addTask({
-          title: lines[i], description: "", status: "todo", priority: "none",
-          projectId: activeProjectId ?? defaultProjectId, dueDate: null, tags: [], recurring: null,
-          position: tasks.length + i, assignee: null, workspace: "cative" as const,
+          title: lines[i], description: "", status, priority,
+          projectId: activeProjectId ?? projectId,
+          dueDate: dueDate || null, tags: [], recurring: null,
+          position: tasks.length + i, assignee, workspace,
         })
       }
       toast.success(`${lines.length} tarefas criadas!`)
-      setTitle("")
-      setActive(false)
+      reset(); setActive(false)
     })()
   }
 
@@ -427,25 +449,143 @@ function InlineAddRow({ activeProjectId, defaultProjectId }: { activeProjectId: 
     )
   }
 
+  const statusCfg = STATUS_CONFIG[status]
+  const priorityCfg = PRIORITY_CONFIG[priority]
+
   return (
-    <tr className="border-t">
-      <td colSpan={10} className="px-4 py-2">
-        <div className="flex items-center gap-2">
-          <Circle className="size-4 text-muted-foreground shrink-0" />
+    <tr className="border-t bg-muted/20">
+      {/* drag placeholder */}
+      <td className="w-7" />
+      {/* checkbox placeholder */}
+      <td className="w-8 px-2"><Circle className="size-4 text-muted-foreground" /></td>
+      {/* Title */}
+      <td className="px-2 py-2">
+        <input
+          ref={inputRef}
+          className="w-full text-sm bg-transparent outline-none placeholder:text-muted-foreground/60"
+          placeholder="Nome da tarefa… Enter ↵ para salvar"
+          value={title}
+          onChange={e => setTitle(e.target.value)}
+          onPaste={handlePaste}
+          onKeyDown={e => {
+            if (e.key === "Enter") save()
+            if (e.key === "Escape") { reset(); setActive(false) }
+          }}
+          autoFocus
+        />
+      </td>
+      {/* Status */}
+      <td className="px-2 py-2 hidden sm:table-cell w-36" onClick={e => e.stopPropagation()}>
+        <Select value={status} onValueChange={v => setStatus(v as Status)}>
+          <SelectTrigger className={cn("h-7 text-xs border-0 shadow-none focus:ring-0 px-2", statusCfg.color, statusCfg.bg)}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {(Object.entries(STATUS_CONFIG) as [Status, typeof STATUS_CONFIG[Status]][]).map(([k, v]) => (
+              <SelectItem key={k} value={k} className="text-xs">{v.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </td>
+      {/* Priority */}
+      <td className="px-2 py-2 hidden sm:table-cell w-28" onClick={e => e.stopPropagation()}>
+        <Select value={priority} onValueChange={v => setPriority(v as Priority)}>
+          <SelectTrigger className={cn("h-7 text-xs border-0 shadow-none focus:ring-0 px-2 w-full", priority !== "none" ? priorityCfg.color : "text-muted-foreground/40")}>
+            <span className="flex items-center gap-1">
+              {priority !== "none" && <Flag className="size-3 shrink-0" />}
+              <SelectValue placeholder="—" />
+            </span>
+          </SelectTrigger>
+          <SelectContent>
+            {(Object.entries(PRIORITY_CONFIG) as [Priority, typeof PRIORITY_CONFIG[Priority]][]).map(([k, v]) => (
+              <SelectItem key={k} value={k} className={cn("text-xs", v.color)}>{v.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </td>
+      {/* Project — only shown when not filtered to a project */}
+      <td className="px-2 py-2 hidden md:table-cell w-36" onClick={e => e.stopPropagation()}>
+        {activeProjectId ? (
+          (() => {
+            const p = projects.find(pr => pr.id === activeProjectId)
+            return p ? (
+              <span className="flex items-center gap-1.5 text-xs">
+                <ProjectIcon iconKey={p.emoji} className="size-3.5 shrink-0" style={{ color: p.color }} />
+                <span className="truncate">{p.name}</span>
+              </span>
+            ) : null
+          })()
+        ) : (
+          <Select value={projectId} onValueChange={setProjectId}>
+            <SelectTrigger className="h-7 text-xs border-0 shadow-none focus:ring-0 px-2 w-full text-muted-foreground">
+              <SelectValue placeholder="Projeto…" />
+            </SelectTrigger>
+            <SelectContent>
+              {projects.map(p => (
+                <SelectItem key={p.id} value={p.id} className="text-xs">
+                  <span className="flex items-center gap-1.5">
+                    <ProjectIcon iconKey={p.emoji} className="size-3.5" style={{ color: p.color }} />
+                    {p.name}
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      </td>
+      {/* Due date */}
+      <td className="px-2 py-2 hidden lg:table-cell w-32" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center gap-1">
+          <CalendarDays className="size-3 shrink-0 text-muted-foreground" />
           <input
-            ref={inputRef}
-            className="flex-1 text-sm bg-transparent outline-none placeholder:text-muted-foreground"
-            placeholder="Nome da tarefa… Enter para salvar · Cole múltiplas linhas para criar várias"
-            value={title}
-            onChange={e => setTitle(e.target.value)}
-            onPaste={handlePaste}
-            onKeyDown={e => {
-              if (e.key === "Enter") save()
-              if (e.key === "Escape") { setTitle(""); setActive(false) }
-            }}
-            onBlur={() => { if (!title.trim()) setActive(false) }}
-            autoFocus
+            type="date"
+            value={dueDate}
+            onChange={e => setDueDate(e.target.value)}
+            className="text-xs bg-transparent outline-none w-24 cursor-pointer text-muted-foreground"
           />
+        </div>
+      </td>
+      {/* Assignee */}
+      <td className="px-2 py-2 hidden sm:table-cell w-36" onClick={e => e.stopPropagation()}>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="flex items-center gap-1.5 text-xs px-1 py-1 rounded hover:bg-muted transition-colors w-full max-w-[128px] group">
+              {assignee ? (
+                <>
+                  {(() => { const m = members.find(m => m.name === assignee); return m ? <MemberAvatar member={m} size="xs" /> : null })()}
+                  <span className="truncate flex-1 text-left">{assignee}</span>
+                </>
+              ) : (
+                <span className="text-muted-foreground/40 flex-1 text-left">Responsável…</span>
+              )}
+              <ChevronDown className="size-3 text-muted-foreground/40 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="min-w-[160px]">
+            {members.map(m => (
+              <DropdownMenuItem key={m.id} className="text-xs gap-2" onClick={() => setAssignee(assignee === m.name ? null : m.name)}>
+                <MemberAvatar member={m} size="xs" />
+                {m.name}
+                {assignee === m.name && <span className="ml-auto text-primary">✓</span>}
+              </DropdownMenuItem>
+            ))}
+            {assignee && (
+              <DropdownMenuItem className="text-xs text-muted-foreground" onClick={() => setAssignee(null)}>
+                Remover
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </td>
+      {/* Save/cancel */}
+      <td className="px-2 py-2 w-24" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center gap-1">
+          <Button size="sm" className="h-6 text-xs px-2" onClick={save} disabled={!title.trim()}>
+            Salvar
+          </Button>
+          <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => { reset(); setActive(false) }}>
+            <X className="size-3" />
+          </Button>
         </div>
       </td>
     </tr>
