@@ -21,6 +21,7 @@ import {
   GripVertical, CalendarDays, Loader2, PanelRightOpen, Copy, Download, Share2,
 } from "lucide-react"
 import { isPast, isToday, parseISO, format, isThisWeek, addDays, isBefore } from "date-fns"
+import { MemberAvatar } from "@/components/MemberAvatar"
 import { isTaskStale } from "@/lib/utils"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -58,7 +59,7 @@ function TaskRow({
   dragHandleProps?: Record<string, unknown>
   isDragging?: boolean
 }) {
-  const { projects, deleteTask, moveTask, updateTask, addChecklistItem, toggleChecklistItem, duplicateTask, saving } = useApp()
+  const { projects, deleteTask, moveTask, updateTask, addChecklistItem, toggleChecklistItem, duplicateTask, saving, members } = useApp()
   const [savingDate, setSavingDate] = useState(false)
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleValue, setTitleValue] = useState(task.title)
@@ -312,13 +313,37 @@ function TaskRow({
             />
           </div>
         </td>
-        {/* Assignee avatar */}
-        <td className="px-2 py-3 w-6 text-center" onClick={e => e.stopPropagation()}>
-          {task.assignee && (
-            <div className="size-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-semibold">
-              {task.assignee[0]}
-            </div>
-          )}
+        {/* Assignee — inline select */}
+        <td className="px-2 py-3 hidden sm:table-cell w-36" onClick={e => e.stopPropagation()}>
+          <Select
+            value={task.assignee ?? "__none__"}
+            onValueChange={v => updateTask(task.id, { assignee: v === "__none__" ? null : v })}
+          >
+            <SelectTrigger className="h-7 text-xs border-0 shadow-none focus:ring-0 px-1 w-full gap-1">
+              {task.assignee ? (
+                <span className="flex items-center gap-1.5 truncate">
+                  {(() => {
+                    const m = members.find(m => m.name === task.assignee)
+                    return m ? <MemberAvatar member={m} size="xs" /> : null
+                  })()}
+                  <span className="truncate">{task.assignee}</span>
+                </span>
+              ) : (
+                <span className="text-muted-foreground/40">—</span>
+              )}
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__" className="text-xs text-muted-foreground">Sem responsável</SelectItem>
+              {members.map(m => (
+                <SelectItem key={m.id} value={m.name} className="text-xs">
+                  <span className="flex items-center gap-1.5">
+                    <MemberAvatar member={m} size="xs" />
+                    {m.name}
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </td>
 
         {/* Actions */}
@@ -661,7 +686,7 @@ export function ListView({ onOpenTask, appliedView, todayFilter = false, noDueDa
                       <th className="text-left px-2 py-2.5 hidden sm:table-cell w-28"><SortBtn k="priority" label="Prioridade" /></th>
                       <th className="text-left px-2 py-2.5 hidden md:table-cell w-36">Projeto</th>
                       <th className="text-left px-2 py-2.5 hidden lg:table-cell w-32"><SortBtn k="dueDate" label="Prazo" /></th>
-                      <th className="w-6" />
+                      <th className="text-left px-2 py-2.5 hidden sm:table-cell w-36 text-xs font-medium text-muted-foreground">Responsável</th>
                       <th className="w-16" />
                     </tr>
                   </thead>
