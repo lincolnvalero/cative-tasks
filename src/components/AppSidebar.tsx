@@ -1,7 +1,7 @@
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupLabel,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem,
-  SidebarHeader, SidebarFooter, SidebarSeparator, SidebarTrigger, useSidebar,
+  SidebarHeader, SidebarFooter, SidebarSeparator, useSidebar,
 } from "@/components/ui/sidebar"
 import { Badge } from "@/components/ui/badge"
 import { useApp } from "@/context/AppContext"
@@ -15,7 +15,7 @@ function CollapseButton() {
   return (
     <button
       onClick={toggleSidebar}
-      className="w-full h-8 rounded-lg flex items-center justify-center gap-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors border border-transparent hover:border-border"
+      className="w-full h-9 rounded-lg flex items-center justify-center gap-2 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors border border-border"
       title={open ? "Recolher menu" : "Expandir menu"}
     >
       {open ? (

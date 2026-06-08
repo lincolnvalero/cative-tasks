@@ -520,6 +520,12 @@ export function useTaskStore() {
   }
 
   async function deleteSavedView(id: string) {
+    // Default views (v1, v2, v3…) are not stored in Supabase — remove only from local state
+    const isDefault = /^v\d+$/.test(id)
+    if (isDefault) {
+      setSavedViews(prev => prev.filter(v => v.id !== id))
+      return
+    }
     try {
       setSaving(true)
       const { error } = await supabase.from("ct_saved_views").delete().eq("id", id)
