@@ -45,7 +45,6 @@ export function AppSidebar({ page, onNavigate }: Props) {
               <p className="text-sm font-semibold leading-tight">Lincoln Tasks</p>
               <p className="text-xs text-muted-foreground">Gestão pessoal</p>
             </div>
-            <SidebarTrigger className="size-7 shrink-0 text-muted-foreground hover:text-foreground" />
           </div>
 
           {/* Workspace switcher */}
@@ -208,9 +207,14 @@ export function AppSidebar({ page, onNavigate }: Props) {
       </SidebarContent>
 
       <SidebarFooter>
-        <div className="px-2 py-1 text-xs text-muted-foreground">
+        <div className="px-2 py-1 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
           {tasks.filter(t => t.status === "done").length} de {tasks.length} tarefas concluídas
         </div>
+        <SidebarTrigger className="w-full h-8 rounded-lg flex items-center justify-center gap-2 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors border border-transparent hover:border-border group-data-[collapsible=icon]:justify-center">
+          <PanelLeftClose className="size-4 shrink-0 group-data-[collapsible=icon]:hidden" />
+          <span className="group-data-[collapsible=icon]:hidden">Recolher menu</span>
+          <PanelLeftOpen className="size-4 shrink-0 hidden group-data-[collapsible=icon]:block" />
+        </SidebarTrigger>
       </SidebarFooter>
     </Sidebar>
   )
