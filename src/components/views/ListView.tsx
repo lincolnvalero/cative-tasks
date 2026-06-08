@@ -54,6 +54,7 @@ function SortableRow(props: RowProps) {
 
 function TaskRow({
   task, onOpenTask, selected, onToggleSelect,
+  checklistOpen, onToggleChecklist,
   newChecklistText, onChecklistTextChange,
   dragRef, dragStyle, dragHandleProps, isDragging,
 }: RowProps & {
@@ -363,7 +364,7 @@ function TaskRow({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-[160px]">
-              <DropdownMenuItem className="text-xs gap-2" onClick={e => { onOpenTask(task) }}>
+              <DropdownMenuItem className="text-xs gap-2" onClick={() => { onOpenTask(task) }}>
                 <PanelRightOpen className="size-3.5" /> Abrir detalhes
               </DropdownMenuItem>
               <DropdownMenuItem className="text-xs gap-2" onClick={handleCopyWhatsApp}>
