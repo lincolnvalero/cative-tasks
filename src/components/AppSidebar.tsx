@@ -34,7 +34,7 @@ export function AppSidebar({ page, onNavigate }: Props) {
   }
 
   return (
-    <Sidebar>
+    <Sidebar collapsible="icon">
       <SidebarHeader>
         <div className="flex flex-col gap-2 px-2 py-1">
           <div className="flex items-center gap-2">

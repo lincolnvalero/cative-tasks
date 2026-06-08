@@ -20,6 +20,8 @@ import {
   CheckCircle2, Circle, Plus, RefreshCw, Bookmark, X, Check,
   GripVertical, CalendarDays, Loader2, PanelRightOpen, Copy, Download, Share2,
 } from "lucide-react"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { ChevronDown } from "lucide-react"
 import { isPast, isToday, parseISO, format, isThisWeek, addDays, isBefore } from "date-fns"
 import { MemberAvatar } from "@/components/MemberAvatar"
 import { isTaskStale } from "@/lib/utils"
@@ -313,37 +315,41 @@ function TaskRow({
             />
           </div>
         </td>
-        {/* Assignee — inline select */}
+        {/* Assignee — inline dropdown */}
         <td className="px-2 py-3 hidden sm:table-cell w-36" onClick={e => e.stopPropagation()}>
-          <Select
-            value={task.assignee ?? "__none__"}
-            onValueChange={v => updateTask(task.id, { assignee: v === "__none__" ? null : v })}
-          >
-            <SelectTrigger className="h-7 text-xs border-0 shadow-none focus:ring-0 px-1 w-full gap-1">
-              {task.assignee ? (
-                <span className="flex items-center gap-1.5 truncate">
-                  {(() => {
-                    const m = members.find(m => m.name === task.assignee)
-                    return m ? <MemberAvatar member={m} size="xs" /> : null
-                  })()}
-                  <span className="truncate">{task.assignee}</span>
-                </span>
-              ) : (
-                <span className="text-muted-foreground/40">—</span>
-              )}
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__none__" className="text-xs text-muted-foreground">Sem responsável</SelectItem>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-1.5 text-xs px-1 py-1 rounded hover:bg-muted transition-colors w-full max-w-[128px] group">
+                {task.assignee ? (
+                  <>
+                    {(() => { const m = members.find(m => m.name === task.assignee); return m ? <MemberAvatar member={m} size="xs" /> : null })()}
+                    <span className="truncate flex-1 text-left">{task.assignee}</span>
+                  </>
+                ) : (
+                  <span className="text-muted-foreground/40 flex-1 text-left">—</span>
+                )}
+                <ChevronDown className="size-3 text-muted-foreground/40 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="min-w-[160px]">
               {members.map(m => (
-                <SelectItem key={m.id} value={m.name} className="text-xs">
-                  <span className="flex items-center gap-1.5">
-                    <MemberAvatar member={m} size="xs" />
-                    {m.name}
-                  </span>
-                </SelectItem>
+                <DropdownMenuItem
+                  key={m.id}
+                  className="text-xs gap-2"
+                  onClick={() => updateTask(task.id, { assignee: task.assignee === m.name ? null : m.name })}
+                >
+                  <MemberAvatar member={m} size="xs" />
+                  {m.name}
+                  {task.assignee === m.name && <span className="ml-auto text-primary">✓</span>}
+                </DropdownMenuItem>
               ))}
-            </SelectContent>
-          </Select>
+              {task.assignee && (
+                <DropdownMenuItem className="text-xs text-muted-foreground" onClick={() => updateTask(task.id, { assignee: null })}>
+                  Remover responsável
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </td>
 
         {/* Actions */}
