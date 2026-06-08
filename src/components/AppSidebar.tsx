@@ -1,12 +1,12 @@
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupLabel,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem,
-  SidebarHeader, SidebarFooter, SidebarSeparator,
+  SidebarHeader, SidebarFooter, SidebarSeparator, SidebarTrigger, useSidebar,
 } from "@/components/ui/sidebar"
 import { Badge } from "@/components/ui/badge"
 import { useApp } from "@/context/AppContext"
 import type { Status } from "@/types/task"
-import { LayoutDashboard, CheckSquare, FolderKanban, Zap, StickyNote, User, Building2, LayoutList } from "lucide-react"
+import { LayoutDashboard, CheckSquare, FolderKanban, Zap, StickyNote, User, Building2, LayoutList, PanelLeftClose, PanelLeftOpen } from "lucide-react"
 import { ProjectIcon } from "@/components/ProjectIcon"
 import { cn } from "@/lib/utils"
 
@@ -41,10 +41,11 @@ export function AppSidebar({ page, onNavigate }: Props) {
             <div className="size-8 rounded-lg bg-primary flex items-center justify-center shrink-0">
               <Zap className="size-4 text-primary-foreground" />
             </div>
-            <div>
+            <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold leading-tight">Lincoln Tasks</p>
               <p className="text-xs text-muted-foreground">Gestão pessoal</p>
             </div>
+            <SidebarTrigger className="size-7 shrink-0 text-muted-foreground hover:text-foreground" />
           </div>
 
           {/* Workspace switcher */}
