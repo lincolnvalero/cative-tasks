@@ -19,8 +19,9 @@ import {
   Trash2, Search, Flag, ArrowUpDown,
   CheckCircle2, Circle, Plus, RefreshCw, Bookmark, X, Check,
   GripVertical, CalendarDays, Loader2, PanelRightOpen, Copy, Download, Share2,
+  MoreHorizontal, ChevronRight,
 } from "lucide-react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
 import { ChevronDown } from "lucide-react"
 import { isPast, isToday, parseISO, format, isThisWeek, addDays, isBefore } from "date-fns"
 import { MemberAvatar } from "@/components/MemberAvatar"
@@ -139,7 +140,7 @@ function TaskRow({
         ref={dragRef}
         style={dragStyle}
         className={cn(
-          "hover:bg-muted/20 transition-colors",
+          "group hover:bg-muted/20 transition-colors",
           overdue && "bg-red-500/5",
           selected && "bg-primary/5",
           isDragging && "opacity-50 bg-muted/30",
@@ -147,13 +148,13 @@ function TaskRow({
         )}
       >
         {/* Drag handle */}
-        <td className="px-2 py-3 w-7" onClick={e => e.stopPropagation()}>
+        <td className="px-2 py-2 w-7" onClick={e => e.stopPropagation()}>
           <button {...dragHandleProps} className="cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground touch-none">
             <GripVertical className="size-3.5" />
           </button>
         </td>
         {/* Checkbox */}
-        <td className="px-2 py-3 w-8" onClick={e => e.stopPropagation()}>
+        <td className="px-2 py-2 w-8" onClick={e => e.stopPropagation()}>
           <input type="checkbox" checked={selected} onChange={onToggleSelect} className="rounded" />
         </td>
         {/* Title — inline edit ao clicar, ícone abre o sheet */}
@@ -178,9 +179,9 @@ function TaskRow({
                   />
                 ) : (
                   <span
-                    className={cn("font-medium text-sm leading-snug cursor-text flex-1", isDone && "line-through text-muted-foreground")}
+                    className={cn("font-medium text-sm leading-snug cursor-text flex-1 line-clamp-2", isDone && "line-through text-muted-foreground")}
                     onClick={startEditTitle}
-                    title="Clique para editar"
+                    title={task.title}
                   >
                     {task.title}
                   </span>
@@ -195,59 +196,54 @@ function TaskRow({
                   <PanelRightOpen className="size-3.5" />
                 </button>
               </div>
-              {/* Subtarefas sempre visíveis — itálico, cinza, indentado */}
+              {/* Checklist — colapsável via badge */}
               {checklist.length > 0 && (
-                <div className="flex flex-col gap-0.5 mt-1">
-                  {checklist.map(item => (
-                    <button
-                      key={item.id}
-                      onClick={e => { e.stopPropagation(); toggleChecklistItem(task.id, item.id) }}
-                      className="flex items-center gap-1.5 text-left group"
-                    >
-                      <div className={cn("size-3 rounded border flex items-center justify-center shrink-0 transition-colors", item.done ? "bg-primary border-primary" : "border-muted-foreground/30 group-hover:border-primary")}>
-                        {item.done && <Check className="size-2 text-primary-foreground" />}
+                <div className="mt-1" onClick={e => e.stopPropagation()}>
+                  <button
+                    onClick={e => { e.stopPropagation(); onToggleChecklist() }}
+                    className="flex items-center gap-1 text-[10px] text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+                  >
+                    <ChevronRight className={cn("size-3 transition-transform", checklistOpen && "rotate-90")} />
+                    {checklist.filter(i => i.done).length}/{checklist.length} subtarefas
+                  </button>
+                  {checklistOpen && (
+                    <div className="flex flex-col gap-0.5 mt-1 pl-1">
+                      {checklist.map(item => (
+                        <button
+                          key={item.id}
+                          onClick={e => { e.stopPropagation(); toggleChecklistItem(task.id, item.id) }}
+                          className="flex items-center gap-1.5 text-left group"
+                        >
+                          <div className={cn("size-3 rounded border flex items-center justify-center shrink-0 transition-colors", item.done ? "bg-primary border-primary" : "border-muted-foreground/30 group-hover:border-primary")}>
+                            {item.done && <Check className="size-2 text-primary-foreground" />}
+                          </div>
+                          <span className={cn("text-xs italic text-gray-500 dark:text-gray-400", item.done && "line-through opacity-60")}>
+                            {item.text}
+                          </span>
+                        </button>
+                      ))}
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <Plus className="size-3 text-muted-foreground/40 shrink-0" />
+                        <input
+                          className="text-xs italic text-gray-400 bg-transparent outline-none placeholder:text-muted-foreground/40 w-full"
+                          placeholder="Adicionar subitem…"
+                          value={newChecklistText}
+                          onChange={e => onChecklistTextChange(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === "Enter" && newChecklistText.trim()) addChecklistItemLocal()
+                            if (e.key === "Escape") onChecklistTextChange("")
+                          }}
+                        />
                       </div>
-                      <span className={cn("text-xs italic text-gray-500 dark:text-gray-400", item.done && "line-through opacity-60")}>
-                        {item.text}
-                      </span>
-                    </button>
-                  ))}
-                  {/* Add subitem inline */}
-                  <div className="flex items-center gap-1.5 mt-0.5" onClick={e => e.stopPropagation()}>
-                    <Plus className="size-3 text-muted-foreground/40 shrink-0" />
-                    <input
-                      className="text-xs italic text-gray-400 bg-transparent outline-none placeholder:text-muted-foreground/40 w-full"
-                      placeholder="Adicionar subitem…"
-                      value={newChecklistText}
-                      onChange={e => onChecklistTextChange(e.target.value)}
-                      onKeyDown={e => {
-                        if (e.key === "Enter" && newChecklistText.trim()) addChecklistItemLocal()
-                        if (e.key === "Escape") onChecklistTextChange("")
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
-              {/* Add first subitem if no checklist yet — subtle */}
-              {checklist.length === 0 && (
-                <div className="flex items-center gap-1.5 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
-                  <Plus className="size-3 text-muted-foreground/30 shrink-0" />
-                  <input
-                    className="text-xs italic text-gray-400 bg-transparent outline-none placeholder:text-muted-foreground/30 w-full"
-                    placeholder="Adicionar subitem…"
-                    value={newChecklistText}
-                    onChange={e => onChecklistTextChange(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === "Enter" && newChecklistText.trim()) addChecklistItemLocal()
-                    }}
-                  />
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           </div>
         </td>
         {/* Status — inline select with stale indicator */}
-        <td className="px-2 py-3 hidden sm:table-cell w-36" onClick={e => e.stopPropagation()}>
+        <td className="px-2 py-2 hidden sm:table-cell w-36" onClick={e => e.stopPropagation()}>
           <div className="flex items-center gap-1">
             {isTaskStale(task) && (
               <div className="size-2 rounded-full bg-amber-500 shrink-0" title="Sem movimentação há 5+ dias" />
@@ -267,36 +263,42 @@ function TaskRow({
             </Select>
           </div>
         </td>
-        {/* Priority — inline select */}
-        <td className="px-2 py-3 hidden sm:table-cell w-28" onClick={e => e.stopPropagation()}>
-          <Select value={task.priority} onValueChange={v => {
-            updateTask(task.id, { priority: v as Priority })
-            toast.success(`Prioridade: ${PRIORITY_CONFIG[v as Priority].label}`)
-          }}>
-            <SelectTrigger className={cn("h-7 text-xs border-0 shadow-none focus:ring-0 px-2 w-full", task.priority !== "none" ? priority.color : "text-muted-foreground/40")}>
-              <span className="flex items-center gap-1">
-                {task.priority !== "none" && <Flag className="size-3 shrink-0" />}
-                <SelectValue placeholder="—" />
-              </span>
-            </SelectTrigger>
-            <SelectContent>
+        {/* Priority — icon only */}
+        <td className="px-2 py-2 hidden sm:table-cell w-10" onClick={e => e.stopPropagation()}>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="flex items-center justify-center w-7 h-7 rounded hover:bg-muted transition-colors"
+                title={task.priority !== "none" ? priority.label : "Sem prioridade"}
+              >
+                <Flag className={cn("size-3.5", task.priority !== "none" ? priority.color : "text-muted-foreground/30")} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="min-w-[140px]">
               {(Object.entries(PRIORITY_CONFIG) as [Priority, typeof PRIORITY_CONFIG[Priority]][]).map(([k, v]) => (
-                <SelectItem key={k} value={k} className={cn("text-xs", v.color)}>{v.label}</SelectItem>
+                <DropdownMenuItem key={k} className={cn("text-xs gap-2", v.color)} onClick={() => {
+                  updateTask(task.id, { priority: k as Priority })
+                  toast.success(`Prioridade: ${v.label}`)
+                }}>
+                  <Flag className="size-3" />
+                  {v.label}
+                  {task.priority === k && <Check className="size-3 ml-auto" />}
+                </DropdownMenuItem>
               ))}
-            </SelectContent>
-          </Select>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </td>
-        {/* Project — 2 lines, no truncate */}
-        <td className="px-2 py-3 hidden md:table-cell w-36">
+        {/* Project */}
+        <td className="px-2 py-2 hidden md:table-cell w-36">
           {project && (
-            <span className="flex items-start gap-1.5 text-xs">
-              <ProjectIcon iconKey={project.emoji} className="size-3.5 shrink-0 mt-0.5" style={{ color: project.color }} />
-              <span className="whitespace-normal leading-snug">{project.name}</span>
+            <span className="flex items-center gap-1.5 text-xs max-w-[128px]">
+              <ProjectIcon iconKey={project.emoji} className="size-3.5 shrink-0" style={{ color: project.color }} />
+              <span className="truncate" title={project.name}>{project.name}</span>
             </span>
           )}
         </td>
         {/* Due date — inline input */}
-        <td className="px-2 py-3 hidden lg:table-cell w-32" onClick={e => e.stopPropagation()}>
+        <td className="px-2 py-2 hidden lg:table-cell w-32" onClick={e => e.stopPropagation()}>
           <div className="flex items-center gap-1">
             {savingDate ? (
               <Loader2 className="size-3 shrink-0 animate-spin text-muted-foreground" />
@@ -316,7 +318,7 @@ function TaskRow({
           </div>
         </td>
         {/* Assignee — inline dropdown */}
-        <td className="px-2 py-3 hidden sm:table-cell w-36" onClick={e => e.stopPropagation()}>
+        <td className="px-2 py-2 hidden sm:table-cell w-36" onClick={e => e.stopPropagation()}>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="flex items-center gap-1.5 text-xs px-1 py-1 rounded hover:bg-muted transition-colors w-full max-w-[128px] group">
@@ -352,17 +354,30 @@ function TaskRow({
           </DropdownMenu>
         </td>
 
-        {/* Actions */}
-        <td className="px-2 py-3 w-24 flex items-center gap-0.5" onClick={e => e.stopPropagation()}>
-          <Button variant="ghost" size="icon" className="size-7 hover:text-green-600" onClick={handleCopyWhatsApp} title="Copiar para WhatsApp">
-            <Share2 className="size-3.5" />
-          </Button>
-          <Button variant="ghost" size="icon" className="size-7 hover:text-blue-500" onClick={handleDuplicate} title="Duplicar">
-            <Copy className="size-3.5" />
-          </Button>
-          <Button variant="ghost" size="icon" className="size-7 hover:text-destructive" onClick={handleDelete}>
-            <Trash2 className="size-3.5" />
-          </Button>
+        {/* Actions — menu recolhido em "..." */}
+        <td className="px-2 py-2 w-10" onClick={e => e.stopPropagation()}>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="size-7 opacity-0 group-hover:opacity-100 transition-opacity">
+                <MoreHorizontal className="size-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-[160px]">
+              <DropdownMenuItem className="text-xs gap-2" onClick={e => { onOpenTask(task) }}>
+                <PanelRightOpen className="size-3.5" /> Abrir detalhes
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-xs gap-2" onClick={handleCopyWhatsApp}>
+                <Share2 className="size-3.5" /> Copiar para WhatsApp
+              </DropdownMenuItem>
+              <DropdownMenuItem className="text-xs gap-2" onClick={handleDuplicate}>
+                <Copy className="size-3.5" /> Duplicar
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="text-xs gap-2 text-destructive focus:text-destructive" onClick={handleDelete}>
+                <Trash2 className="size-3.5" /> Excluir
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </td>
       </tr>
     </>
@@ -487,21 +502,27 @@ function InlineAddRow({ activeProjectId, defaultProjectId }: { activeProjectId: 
           </SelectContent>
         </Select>
       </td>
-      {/* Priority */}
-      <td className="px-2 py-2 hidden sm:table-cell w-28" onClick={e => e.stopPropagation()}>
-        <Select value={priority} onValueChange={v => setPriority(v as Priority)}>
-          <SelectTrigger className={cn("h-7 text-xs border-0 shadow-none focus:ring-0 px-2 w-full", priority !== "none" ? priorityCfg.color : "text-muted-foreground/40")}>
-            <span className="flex items-center gap-1">
-              {priority !== "none" && <Flag className="size-3 shrink-0" />}
-              <SelectValue placeholder="—" />
-            </span>
-          </SelectTrigger>
-          <SelectContent>
+      {/* Priority — icon only */}
+      <td className="px-2 py-2 hidden sm:table-cell w-10" onClick={e => e.stopPropagation()}>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              className="flex items-center justify-center w-7 h-7 rounded hover:bg-muted transition-colors"
+              title={priority !== "none" ? priorityCfg.label : "Sem prioridade"}
+            >
+              <Flag className={cn("size-3.5", priority !== "none" ? priorityCfg.color : "text-muted-foreground/30")} />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="min-w-[140px]">
             {(Object.entries(PRIORITY_CONFIG) as [Priority, typeof PRIORITY_CONFIG[Priority]][]).map(([k, v]) => (
-              <SelectItem key={k} value={k} className={cn("text-xs", v.color)}>{v.label}</SelectItem>
+              <DropdownMenuItem key={k} className={cn("text-xs gap-2", v.color)} onClick={() => setPriority(k as Priority)}>
+                <Flag className="size-3" />
+                {v.label}
+                {priority === k && <Check className="size-3 ml-auto" />}
+              </DropdownMenuItem>
             ))}
-          </SelectContent>
-        </Select>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </td>
       {/* Project — only shown when not filtered to a project */}
       <td className="px-2 py-2 hidden md:table-cell w-36" onClick={e => e.stopPropagation()}>
@@ -829,11 +850,11 @@ export function ListView({ onOpenTask, appliedView, todayFilter = false, noDueDa
                       <th className="w-8 px-2" />
                       <th className="text-left px-2 py-2.5"><SortBtn k="title" label="Tarefa" /></th>
                       <th className="text-left px-2 py-2.5 hidden sm:table-cell w-36"><SortBtn k="status" label="Status" /></th>
-                      <th className="text-left px-2 py-2.5 hidden sm:table-cell w-28"><SortBtn k="priority" label="Prioridade" /></th>
-                      <th className="text-left px-2 py-2.5 hidden md:table-cell w-36">Projeto</th>
+                      <th className="px-2 py-2.5 hidden sm:table-cell w-10" title="Prioridade"><Flag className="size-3 text-muted-foreground/60" /></th>
+                      <th className="text-left px-2 py-2.5 hidden md:table-cell w-36 text-xs font-medium text-muted-foreground">Projeto</th>
                       <th className="text-left px-2 py-2.5 hidden lg:table-cell w-32"><SortBtn k="dueDate" label="Prazo" /></th>
                       <th className="text-left px-2 py-2.5 hidden sm:table-cell w-36 text-xs font-medium text-muted-foreground">Responsável</th>
-                      <th className="w-16" />
+                      <th className="w-10" />
                     </tr>
                   </thead>
                   <tbody>
