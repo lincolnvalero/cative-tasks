@@ -101,11 +101,10 @@ export const PROJECT_COLORS = [
 ]
 
 export const DEFAULT_PROJECTS: Project[] = [
-  { id: "p1", name: "Criação",    color: "#6366f1", emoji: "paintbrush", workspace: "cative" },
-  { id: "p2", name: "Mídia Paga", color: "#f59e0b", emoji: "megaphone",  workspace: "cative" },
-  { id: "p3", name: "Estratégia", color: "#10b981", emoji: "lightbulb",  workspace: "cative" },
-  { id: "p4", name: "Operações",  color: "#3b82f6", emoji: "settings2",  workspace: "cative" },
-  { id: "p5", name: "Clientes",   color: "#ec4899", emoji: "users",      workspace: "cative" },
+  { id: "a1000000-0000-0000-0000-000000000001", name: "Igreja / MJ", color: "#8b5cf6", emoji: "church",  workspace: "personal" },
+  { id: "a1000000-0000-0000-0000-000000000002", name: "Pessoal",     color: "#10b981", emoji: "user",    workspace: "personal" },
+  { id: "a1000000-0000-0000-0000-000000000003", name: "Financeiro",  color: "#f59e0b", emoji: "wallet",  workspace: "personal" },
+  { id: "a1000000-0000-0000-0000-000000000004", name: "Projetos",    color: "#3b82f6", emoji: "folder",  workspace: "personal" },
 ]
 
 export const DEFAULT_SAVED_VIEWS: SavedView[] = [

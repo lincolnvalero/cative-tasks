@@ -46,9 +46,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const store = useTaskStore()
   const membersStore = useMembersStore()
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null)
-  const [activeWorkspace, setActiveWorkspace] = useState<Workspace | "all">(() => {
-    return (localStorage.getItem("lincoln-workspace") as Workspace | "all") ?? "all"
-  })
+  const [activeWorkspace, setActiveWorkspace] = useState<Workspace | "all">("all")
 
   useEffect(() => { membersStore.fetchMembers() }, [])
 

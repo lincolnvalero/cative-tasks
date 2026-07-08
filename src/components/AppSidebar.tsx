@@ -8,7 +8,6 @@ import { useApp } from "@/context/AppContext"
 import type { Status } from "@/types/task"
 import { LayoutDashboard, CheckSquare, FolderKanban, Zap, StickyNote, User, Building2, LayoutList, PanelLeftClose, PanelLeftOpen } from "lucide-react"
 import { ProjectIcon } from "@/components/ProjectIcon"
-import { cn } from "@/lib/utils"
 
 function CollapseButton() {
   const { toggleSidebar, open } = useSidebar()
@@ -40,7 +39,7 @@ interface Props {
 const ACTIVE_STATUSES: Status[] = ["todo", "in-progress", "review"]
 
 export function AppSidebar({ page, onNavigate }: Props) {
-  const { tasks, projects, activeProjectId, setActiveProjectId, activeWorkspace, setActiveWorkspace } = useApp()
+  const { tasks, projects, activeProjectId, setActiveProjectId } = useApp()
 
   const activeTasks = tasks.filter(t => ACTIVE_STATUSES.includes(t.status)).length
 
@@ -67,28 +66,6 @@ export function AppSidebar({ page, onNavigate }: Props) {
             </div>
           </div>
 
-          {/* Workspace switcher */}
-          <div className="flex rounded-lg border overflow-hidden text-xs">
-            {(["all", "personal", "cative"] as const).map(w => {
-              const labels = { all: "Todos", personal: "Pessoal", cative: "Cative" }
-              const icons = { all: null, personal: <User className="size-3" />, cative: <Building2 className="size-3" /> }
-              return (
-                <button
-                  key={w}
-                  onClick={() => setActiveWorkspace(w)}
-                  className={cn(
-                    "flex-1 flex items-center justify-center gap-1 py-1 transition-colors",
-                    activeWorkspace === w
-                      ? w === "personal" ? "bg-blue-500 text-white" : w === "cative" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
-                      : "hover:bg-muted/50 text-muted-foreground"
-                  )}
-                >
-                  {icons[w]}
-                  {labels[w]}
-                </button>
-              )
-            })}
-          </div>
         </div>
       </SidebarHeader>
 
