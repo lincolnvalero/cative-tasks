@@ -1,54 +1,75 @@
-import { create } from "zustand"
-import { supabase } from "@/lib/supabase"
+import { useState } from "react"
+import { toast } from "sonner"
 import type { Member } from "@/types/task"
+import { supabase } from "@/lib/supabase"
 
 const MEMBER_COLORS = [
-  "#6366f1", "#f59e0b", "#10b981", "#3b82f6",
-  "#ec4899", "#ef4444", "#8b5cf6", "#14b8a6",
+  "#3b82f6", "#10b981", "#ec4899", "#f59e0b", "#8b5cf6",
+  "#ef4444", "#14b8a6", "#f97316", "#84cc16", "#6366f1",
 ]
 
-function toInitials(name: string) {
-  return name.trim().split(/\s+/).map(w => w[0]).join("").toUpperCase().slice(0, 2)
+const DEFAULT_MEMBERS: Member[] = [
+  { id: "m1", name: "Lincoln", color: "#3b82f6", initials: "LI" },
+  { id: "m2", name: "Gustavo", color: "#10b981", initials: "GU" },
+  { id: "m3", name: "Ingrid",  color: "#ec4899", initials: "IN" },
+]
+
+function toInitials(name: string): string {
+  const parts = name.trim().split(/\s+/)
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
 }
 
-interface MembersState {
-  members: Member[]
-  loading: boolean
-  fetchMembers: () => Promise<void>
-  addMember: (name: string) => Promise<Member | undefined>
-  removeMember: (id: string) => Promise<void>
+function mapMember(row: Record<string, unknown>): Member {
+  return {
+    id: row.id as string,
+    name: row.name as string,
+    color: row.color as string,
+    initials: row.initials as string,
+  }
 }
 
-export const useMembersStore = create<MembersState>((set, get) => ({
-  members: [],
-  loading: false,
+export function useMembersStore() {
+  const [members, setMembers] = useState<Member[]>([])
+  const [loading, setLoading] = useState(false)
 
-  async fetchMembers() {
-    set({ loading: true })
-    const { data } = await supabase.from("ct_members").select("*").order("name")
-    set({ members: (data as Member[]) ?? [], loading: false })
-  },
+  async function fetchMembers() {
+    setLoading(true)
+    try {
+      const { data, error } = await supabase.from("ct_members").select("*").order("created_at")
+      if (error || !data || data.length === 0) {
+        setMembers(DEFAULT_MEMBERS)
+        return
+      }
+      setMembers(data.map(mapMember))
+    } finally {
+      setLoading(false)
+    }
+  }
 
-  async addMember(name: string) {
-    const trimmed = name.trim()
-    if (!trimmed) return undefined
-    const existing = get().members
-    if (existing.some(m => m.name.toLowerCase() === trimmed.toLowerCase())) return undefined
-    const color = MEMBER_COLORS[existing.length % MEMBER_COLORS.length]
-    const initials = toInitials(trimmed)
-    const { data, error } = await supabase
-      .from("ct_members")
-      .insert({ name: trimmed, color, initials })
-      .select()
-      .single()
-    if (error) { console.error(error); return undefined }
-    const member = data as Member
-    set(s => ({ members: [...s.members, member].sort((a, b) => a.name.localeCompare(b.name)) }))
+  async function addMember(name: string): Promise<Member | undefined> {
+    const usedColors = members.map(m => m.color)
+    const color = MEMBER_COLORS.find(c => !usedColors.includes(c)) ?? MEMBER_COLORS[members.length % MEMBER_COLORS.length]
+    const initials = toInitials(name)
+
+    const { data, error } = await supabase.from("ct_members").insert({ name, color, initials }).select().single()
+    if (error || !data) {
+      toast.error("Erro ao adicionar colaborador")
+      return
+    }
+    const member = mapMember(data)
+    setMembers(prev => [...prev, member])
     return member
-  },
+  }
 
-  async removeMember(id: string) {
-    await supabase.from("ct_members").delete().eq("id", id)
-    set(s => ({ members: s.members.filter(m => m.id !== id) }))
-  },
-}))
+  async function removeMember(id: string): Promise<void> {
+    const { error } = await supabase.from("ct_members").delete().eq("id", id)
+    if (error) {
+      toast.error("Erro ao remover colaborador")
+      return
+    }
+    setMembers(prev => prev.filter(m => m.id !== id))
+  }
+
+  return { members, loading, fetchMembers, addMember, removeMember }
+}

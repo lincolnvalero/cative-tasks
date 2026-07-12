@@ -9,9 +9,10 @@ import { TaskDialog } from "@/components/TaskDialog"
 import { ShortcutsDialog } from "@/components/ShortcutsDialog"
 import { useApp } from "@/context/AppContext"
 import type { Task } from "@/types/task"
-import { Plus, Kanban, List, CalendarDays, BarChart3, X, ChevronDown } from "lucide-react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Plus, Kanban, List, CalendarDays, BarChart3, X, ChevronDown, FolderKanban } from "lucide-react"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { MemberAvatar } from "@/components/MemberAvatar"
+import { ProjectIcon } from "@/components/ProjectIcon"
 import { cn } from "@/lib/utils"
 import { isToday, isPast, parseISO } from "date-fns"
 
@@ -169,6 +170,51 @@ export function TasksPage({ onOpenTask, newTaskOpen = false, onNewTaskClose }: P
                   <DropdownMenuItem onClick={() => setDueDateFilter(null)} className="text-muted-foreground">
                     Limpar filtro
                   </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            {/* Chip: filtro por projeto */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className={cn(
+                    "text-xs px-3 py-1 rounded-full border transition-colors flex items-center gap-1",
+                    activeProjectId ? "bg-violet-500 text-white border-violet-500" : "border-border hover:bg-muted"
+                  )}
+                >
+                  {activeProjectId && activeProject ? (
+                    <>
+                      <ProjectIcon iconKey={activeProject.emoji} className="size-3" style={{ color: "white" }} />
+                      {activeProject.name}
+                    </>
+                  ) : (
+                    <>
+                      <FolderKanban className="size-3" />
+                      Projeto
+                    </>
+                  )}
+                  <ChevronDown className="size-3" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="max-h-64 overflow-y-auto">
+                {projects.map(p => (
+                  <DropdownMenuItem
+                    key={p.id}
+                    onClick={() => setActiveProjectId(activeProjectId === p.id ? null : p.id)}
+                    className="gap-2"
+                  >
+                    <ProjectIcon iconKey={p.emoji} className="size-4 shrink-0" style={{ color: p.color }} />
+                    <span className="flex-1">{p.name}</span>
+                    {activeProjectId === p.id && <span className="text-primary">✓</span>}
+                  </DropdownMenuItem>
+                ))}
+                {activeProjectId && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setActiveProjectId(null)} className="text-muted-foreground">
+                      Limpar filtro
+                    </DropdownMenuItem>
+                  </>
                 )}
               </DropdownMenuContent>
             </DropdownMenu>

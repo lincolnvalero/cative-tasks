@@ -1,8 +1,8 @@
-import { cn } from "@/lib/utils"
 import type { Member } from "@/types/task"
+import { cn } from "@/lib/utils"
 
 interface Props {
-  member: Member | undefined | null
+  member: Member
   size?: "xs" | "sm" | "md"
   className?: string
 }
@@ -14,18 +14,13 @@ const SIZE = {
 }
 
 export function MemberAvatar({ member, size = "sm", className }: Props) {
-  if (!member) return null
   return (
-    <div
-      className={cn(
-        "rounded-full flex items-center justify-center font-semibold text-white shrink-0 select-none",
-        SIZE[size],
-        className,
-      )}
+    <span
+      className={cn("rounded-full flex items-center justify-center font-semibold text-white shrink-0", SIZE[size], className)}
       style={{ background: member.color }}
       title={member.name}
     >
       {member.initials}
-    </div>
+    </span>
   )
 }

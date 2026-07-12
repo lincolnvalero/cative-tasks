@@ -6,7 +6,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { useApp } from "@/context/AppContext"
 import type { Status } from "@/types/task"
-import { LayoutDashboard, CheckSquare, FolderKanban, Zap, StickyNote, User, Building2, LayoutList, PanelLeftClose, PanelLeftOpen } from "lucide-react"
+import { LayoutDashboard, CheckSquare, FolderKanban, Zap, StickyNote, User, Building2, LayoutList, PanelLeftClose, PanelLeftOpen, Users } from "lucide-react"
 import { ProjectIcon } from "@/components/ProjectIcon"
 
 function CollapseButton() {
@@ -29,7 +29,7 @@ function CollapseButton() {
   )
 }
 
-type Page = "dashboard" | "tasks" | "projects" | "notes"
+type Page = "dashboard" | "tasks" | "projects" | "notes" | "collaborators"
 
 interface Props {
   page: Page
@@ -199,6 +199,22 @@ export function AppSidebar({ page, onNavigate }: Props) {
                 </SidebarMenuItem>
               )
             })}
+          </SidebarMenu>
+        </SidebarGroup>
+        <SidebarSeparator />
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Admin</SidebarGroupLabel>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                isActive={page === "collaborators"}
+                onClick={() => { onNavigate("collaborators"); setActiveProjectId(null) }}
+              >
+                <Users />
+                <span>Colaboradores</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
