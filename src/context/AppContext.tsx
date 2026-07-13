@@ -38,6 +38,7 @@ interface AppContextValue {
   membersLoading: boolean
   addMember: (name: string) => Promise<Member | undefined>
   removeMember: (id: string) => Promise<void>
+  updateMember: (id: string, patch: Partial<Pick<Member, "name" | "color" | "initials">>) => Promise<void>
 }
 
 const AppContext = createContext<AppContextValue | null>(null)
@@ -64,6 +65,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       membersLoading: membersStore.loading,
       addMember: membersStore.addMember,
       removeMember: membersStore.removeMember,
+      updateMember: membersStore.updateMember,
     }}>
       {children}
     </AppContext.Provider>

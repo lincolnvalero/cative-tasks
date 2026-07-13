@@ -3,7 +3,7 @@ import { toast } from "sonner"
 import type { Member } from "@/types/task"
 import { supabase } from "@/lib/supabase"
 
-const MEMBER_COLORS = [
+export const MEMBER_COLORS = [
   "#3b82f6", "#10b981", "#ec4899", "#f59e0b", "#8b5cf6",
   "#ef4444", "#14b8a6", "#f97316", "#84cc16", "#6366f1",
 ]
@@ -71,5 +71,16 @@ export function useMembersStore() {
     setMembers(prev => prev.filter(m => m.id !== id))
   }
 
-  return { members, loading, fetchMembers, addMember, removeMember }
+  async function updateMember(id: string, patch: Partial<Pick<Member, "name" | "color" | "initials">>): Promise<void> {
+    const update: typeof patch = { ...patch }
+    if (patch.name && !patch.initials) update.initials = toInitials(patch.name)
+    const { error } = await supabase.from("ct_members").update(update).eq("id", id)
+    if (error) {
+      toast.error("Erro ao atualizar colaborador")
+      return
+    }
+    setMembers(prev => prev.map(m => m.id === id ? { ...m, ...update } : m))
+  }
+
+  return { members, loading, fetchMembers, addMember, removeMember, updateMember }
 }
