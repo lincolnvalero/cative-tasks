@@ -9,7 +9,7 @@ import { TaskDialog } from "@/components/TaskDialog"
 import { ShortcutsDialog } from "@/components/ShortcutsDialog"
 import { useApp } from "@/context/AppContext"
 import type { Task } from "@/types/task"
-import { Plus, Kanban, List, CalendarDays, BarChart3, X, ChevronDown, FolderKanban } from "lucide-react"
+import { Plus, Kanban, List, CalendarDays, BarChart3, X, ChevronDown, FolderKanban, Users, Clock, CalendarClock, RotateCcw } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { MemberAvatar } from "@/components/MemberAvatar"
 import { ProjectIcon } from "@/components/ProjectIcon"
@@ -22,6 +22,14 @@ interface Props {
   onNewTaskClose?: () => void
 }
 
+type DueDateFilter = null | "overdue" | "this-week" | "next-30"
+
+const DUE_DATE_LABELS: Record<NonNullable<DueDateFilter>, string> = {
+  overdue: "Vencidas",
+  "this-week": "Esta semana",
+  "next-30": "Próx. 30 dias",
+}
+
 export function TasksPage({ onOpenTask, newTaskOpen = false, onNewTaskClose }: Props) {
   const { projects, activeProjectId, setActiveProjectId, savedViews, deleteSavedView, tasks, members } = useApp()
   const [localNewOpen, setLocalNewOpen] = useState(false)
@@ -29,25 +37,33 @@ export function TasksPage({ onOpenTask, newTaskOpen = false, onNewTaskClose }: P
   const [todayFilter, setTodayFilter] = useState(false)
   const [noDueDateFilter, setNoDueDateFilter] = useState(false)
   const [assigneeFilter, setAssigneeFilter] = useState<string[]>([])
-  type DueDateFilter = null | "overdue" | "this-week" | "next-30"
   const [dueDateFilter, setDueDateFilter] = useState<DueDateFilter>(null)
-  const DUE_DATE_LABELS: Record<NonNullable<DueDateFilter>, string> = {
-    overdue: "Vencidas",
-    "this-week": "Esta semana",
-    "next-30": "Próx. 30 dias",
-  }
-
-  // Contagem para os chips
-  const noDueDateCount = tasks.filter(t => !t.dueDate && t.status !== "done").length
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<"kanban" | "list" | "calendar" | "workload">(
     () => (localStorage.getItem("cative-active-tab") as "kanban" | "list" | "calendar" | "workload") || "kanban"
   )
+
   const activeProject = projects.find(p => p.id === activeProjectId)
   const appliedView = savedViews.find(v => v.id === activeViewId) ?? null
+  const noDueDateCount = tasks.filter(t => !t.dueDate && t.status !== "done").length
+  const overdueCount = tasks.filter(t =>
+    t.status !== "done" && t.dueDate &&
+    isPast(parseISO(t.dueDate)) && !isToday(parseISO(t.dueDate))
+  ).length
+
+  const hasAnyFilter = todayFilter || noDueDateFilter || !!dueDateFilter || !!activeProjectId || assigneeFilter.length > 0
 
   const isNewOpen = newTaskOpen || localNewOpen
   function closeNew() { setLocalNewOpen(false); onNewTaskClose?.() }
+
+  function clearAllFilters() {
+    setTodayFilter(false)
+    setNoDueDateFilter(false)
+    setDueDateFilter(null)
+    setActiveProjectId(null)
+    setAssigneeFilter([])
+    setActiveViewId(null)
+  }
 
   function handleTabChange(tab: string) {
     if (tab === "kanban" || tab === "list" || tab === "calendar" || tab === "workload") {
@@ -56,28 +72,20 @@ export function TasksPage({ onOpenTask, newTaskOpen = false, onNewTaskClose }: P
     }
   }
 
-  // Update document title with urgent count
   useEffect(() => {
     const urgent = tasks.filter(t =>
       t.status !== "done" && t.dueDate &&
       (isPast(parseISO(t.dueDate)) || isToday(parseISO(t.dueDate)))
     ).length
-    document.title = urgent > 0 ? `(${urgent}) Cative Tasks` : "Cative Tasks"
+    document.title = urgent > 0 ? `(${urgent}) Lincoln Tasks` : "Lincoln Tasks"
   }, [tasks])
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const tag = (e.target as HTMLElement).tagName
       if (tag === "INPUT" || tag === "TEXTAREA") return
-
-      if (e.key === "?") {
-        e.preventDefault()
-        setShortcutsOpen(true)
-        return
-      }
-
+      if (e.key === "?") { e.preventDefault(); setShortcutsOpen(true); return }
       if (e.metaKey || e.ctrlKey) return
-
       if (e.key === "n" || e.key === "N") { e.preventDefault(); setLocalNewOpen(true) }
     }
     window.addEventListener("keydown", onKey)
@@ -88,24 +96,8 @@ export function TasksPage({ onOpenTask, newTaskOpen = false, onNewTaskClose }: P
     <>
       <div className="flex flex-col gap-4 h-full">
         {/* Header */}
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex flex-col gap-1 min-w-0">
-            <h1 className="text-xl sm:text-2xl font-bold">Tarefas</h1>
-            <div className="flex flex-wrap items-center gap-1.5">
-              {activeProject ? (
-                <button
-                  onClick={() => setActiveProjectId(null)}
-                  className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border text-foreground hover:bg-muted transition-colors"
-                  style={{ borderColor: activeProject.color + "66", color: activeProject.color }}
-                >
-                  <span className="size-1.5 rounded-full" style={{ background: activeProject.color }} />
-                  {activeProject.name} <X className="size-3" />
-                </button>
-              ) : (
-                <span className="text-xs text-muted-foreground">Todos os projetos</span>
-              )}
-            </div>
-          </div>
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-xl sm:text-2xl font-bold">Tarefas</h1>
           <Button onClick={() => setLocalNewOpen(true)} size="sm" className="shrink-0 gap-1.5">
             <Plus className="size-4" />
             <span className="hidden sm:inline">Nova tarefa</span>
@@ -113,86 +105,119 @@ export function TasksPage({ onOpenTask, newTaskOpen = false, onNewTaskClose }: P
           </Button>
         </div>
 
-        {/* Saved views quick-access */}
-        {(savedViews.length > 0 || true) && (
-          <div className="flex gap-1.5 flex-wrap">
-            {/* Chip: Todas */}
-            <button
-              onClick={() => { setTodayFilter(false); setNoDueDateFilter(false); setDueDateFilter(null); setActiveViewId(null) }}
-              className={cn("text-xs px-3 py-1 rounded-full border transition-colors", !todayFilter && !noDueDateFilter && !dueDateFilter && !activeViewId ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted")}
+        {/* Filter toolbar */}
+        <div className="flex flex-col gap-2">
+          {/* Row 1: quick filters + field filters + clear */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+
+            {/* Quick: Todas */}
+            <FilterChip
+              active={!hasAnyFilter && !activeViewId}
+              onClick={clearAllFilters}
             >
               Todas
-            </button>
-            {/* Chip: Hoje */}
-            <button
-              onClick={() => { setTodayFilter(!todayFilter); setNoDueDateFilter(false); setActiveViewId(null); handleTabChange("list") }}
-              className={cn("text-xs px-3 py-1 rounded-full border transition-colors", todayFilter ? "bg-yellow-500 text-white border-yellow-500" : "border-border hover:bg-muted")}
+            </FilterChip>
+
+            {/* Quick: Hoje */}
+            <FilterChip
+              active={todayFilter}
+              onClick={() => {
+                const next = !todayFilter
+                setTodayFilter(next)
+                setNoDueDateFilter(false)
+                setActiveViewId(null)
+                if (next) handleTabChange("list")
+              }}
+              icon={<CalendarClock className="size-3.5" />}
             >
-              📅 Hoje
-            </button>
-            {/* Chip: Sem prazo */}
+              Hoje
+            </FilterChip>
+
+            {/* Quick: Sem prazo */}
             {noDueDateCount > 0 && (
-              <button
-                onClick={() => { setNoDueDateFilter(!noDueDateFilter); setTodayFilter(false); setActiveViewId(null); handleTabChange("list") }}
-                className={cn("text-xs px-3 py-1 rounded-full border transition-colors flex items-center gap-1", noDueDateFilter ? "bg-orange-500 text-white border-orange-500" : "border-orange-300 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-950/20")}
-                title={`${noDueDateCount} tarefa${noDueDateCount > 1 ? "s" : ""} sem prazo definido`}
+              <FilterChip
+                active={noDueDateFilter}
+                onClick={() => {
+                  const next = !noDueDateFilter
+                  setNoDueDateFilter(next)
+                  setTodayFilter(false)
+                  setActiveViewId(null)
+                  if (next) handleTabChange("list")
+                }}
+                badge={noDueDateCount}
               >
-                📭 Sem prazo
-                <span className={cn("text-[10px] font-bold px-1 rounded-full", noDueDateFilter ? "bg-white/20" : "bg-orange-100 text-orange-700 dark:bg-orange-900/30")}>
-                  {noDueDateCount}
-                </span>
-              </button>
+                Sem prazo
+              </FilterChip>
             )}
-            {/* Chip: filtro por prazo */}
+
+            {/* Quick: Vencidas */}
+            {overdueCount > 0 && (
+              <FilterChip
+                active={dueDateFilter === "overdue"}
+                onClick={() => {
+                  setDueDateFilter(dueDateFilter === "overdue" ? null : "overdue")
+                  setActiveViewId(null)
+                }}
+                badge={overdueCount}
+                badgeVariant="danger"
+              >
+                Vencidas
+              </FilterChip>
+            )}
+
+            {/* Separator */}
+            <div className="h-5 w-px bg-border mx-0.5" />
+
+            {/* Field: Prazo */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button
-                  className={cn(
-                    "text-xs px-3 py-1 rounded-full border transition-colors flex items-center gap-1",
-                    dueDateFilter ? "bg-blue-500 text-white border-blue-500" : "border-border hover:bg-muted"
-                  )}
-                >
-                  📅 {dueDateFilter ? DUE_DATE_LABELS[dueDateFilter] : "Prazo"}
+                <button className={cn(
+                  "flex items-center gap-1.5 text-xs h-7 px-2.5 rounded-md border transition-colors font-medium",
+                  dueDateFilter && dueDateFilter !== "overdue"
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "border-border hover:bg-muted text-muted-foreground hover:text-foreground"
+                )}>
+                  <Clock className="size-3.5" />
+                  {dueDateFilter && dueDateFilter !== "overdue" ? DUE_DATE_LABELS[dueDateFilter] : "Prazo"}
                   <ChevronDown className="size-3" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
-                <DropdownMenuItem onClick={() => setDueDateFilter(dueDateFilter === "overdue" ? null : "overdue")}>
-                  {dueDateFilter === "overdue" && "✓ "}Vencidas
-                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setDueDateFilter(dueDateFilter === "this-week" ? null : "this-week")}>
-                  {dueDateFilter === "this-week" && "✓ "}Esta semana
+                  <span className="flex-1">Esta semana</span>
+                  {dueDateFilter === "this-week" && <span className="text-primary ml-2">✓</span>}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setDueDateFilter(dueDateFilter === "next-30" ? null : "next-30")}>
-                  {dueDateFilter === "next-30" && "✓ "}Próximos 30 dias
+                  <span className="flex-1">Próximos 30 dias</span>
+                  {dueDateFilter === "next-30" && <span className="text-primary ml-2">✓</span>}
                 </DropdownMenuItem>
-                {dueDateFilter && (
-                  <DropdownMenuItem onClick={() => setDueDateFilter(null)} className="text-muted-foreground">
-                    Limpar filtro
-                  </DropdownMenuItem>
+                {dueDateFilter && dueDateFilter !== "overdue" && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setDueDateFilter(null)} className="text-muted-foreground">
+                      Limpar
+                    </DropdownMenuItem>
+                  </>
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
-            {/* Chip: filtro por projeto */}
+
+            {/* Field: Projeto */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button
-                  className={cn(
-                    "text-xs px-3 py-1 rounded-full border transition-colors flex items-center gap-1",
-                    activeProjectId ? "bg-violet-500 text-white border-violet-500" : "border-border hover:bg-muted"
-                  )}
-                >
-                  {activeProjectId && activeProject ? (
-                    <>
-                      <ProjectIcon iconKey={activeProject.emoji} className="size-3" style={{ color: "white" }} />
+                <button className={cn(
+                  "flex items-center gap-1.5 text-xs h-7 px-2.5 rounded-md border transition-colors font-medium",
+                  activeProjectId
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "border-border hover:bg-muted text-muted-foreground hover:text-foreground"
+                )}>
+                  <FolderKanban className="size-3.5" />
+                  {activeProject ? (
+                    <span className="flex items-center gap-1">
+                      <ProjectIcon iconKey={activeProject.emoji} className="size-3" />
                       {activeProject.name}
-                    </>
-                  ) : (
-                    <>
-                      <FolderKanban className="size-3" />
-                      Projeto
-                    </>
-                  )}
+                    </span>
+                  ) : "Projeto"}
                   <ChevronDown className="size-3" />
                 </button>
               </DropdownMenuTrigger>
@@ -212,45 +237,104 @@ export function TasksPage({ onOpenTask, newTaskOpen = false, onNewTaskClose }: P
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => setActiveProjectId(null)} className="text-muted-foreground">
-                      Limpar filtro
+                      Limpar
                     </DropdownMenuItem>
                   </>
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
-            {/* Chips: por responsável */}
-            {members.map(m => {
-              const active = assigneeFilter.includes(m.name)
-              return (
-                <button
-                  key={m.id}
-                  onClick={() => setAssigneeFilter(prev => active ? prev.filter(n => n !== m.name) : [...prev, m.name])}
-                  className={cn("text-xs px-2.5 py-1 rounded-full border transition-colors flex items-center gap-1.5", active ? "text-white border-transparent" : "border-border hover:bg-muted")}
-                  style={active ? { background: m.color, borderColor: m.color } : {}}
-                >
-                  <MemberAvatar member={m} size="xs" />
-                  {m.name}
+
+            {/* Field: Responsável */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className={cn(
+                  "flex items-center gap-1.5 text-xs h-7 px-2.5 rounded-md border transition-colors font-medium",
+                  assigneeFilter.length > 0
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "border-border hover:bg-muted text-muted-foreground hover:text-foreground"
+                )}>
+                  <Users className="size-3.5" />
+                  {assigneeFilter.length > 0
+                    ? assigneeFilter.length === 1
+                      ? assigneeFilter[0]
+                      : `${assigneeFilter.length} responsáveis`
+                    : "Responsável"}
+                  <ChevronDown className="size-3" />
                 </button>
-              )
-            })}
-            {savedViews.map(view => (
-              <div key={view.id} className="flex items-center">
-                <button
-                  onClick={() => { setTodayFilter(false); setActiveViewId(activeViewId === view.id ? null : view.id) }}
-                  className={cn("text-xs px-3 py-1 rounded-l-full border border-r-0 transition-colors", activeViewId === view.id ? "bg-primary text-primary-foreground border-primary" : "border-border hover:bg-muted")}
-                >
-                  {view.name}
-                </button>
-                <button
-                  onClick={() => { deleteSavedView(view.id); if (activeViewId === view.id) setActiveViewId(null) }}
-                  className={cn("text-xs px-1.5 py-1 rounded-r-full border transition-colors hover:text-destructive", activeViewId === view.id ? "bg-primary text-primary-foreground border-primary hover:bg-primary/80 hover:text-primary-foreground" : "border-border hover:bg-muted")}
-                >
-                  <X className="size-3" />
-                </button>
-              </div>
-            ))}
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {members.map(m => {
+                  const active = assigneeFilter.includes(m.name)
+                  return (
+                    <DropdownMenuItem
+                      key={m.id}
+                      onClick={() => setAssigneeFilter(prev =>
+                        active ? prev.filter(n => n !== m.name) : [...prev, m.name]
+                      )}
+                      className="gap-2"
+                    >
+                      <MemberAvatar member={m} size="xs" />
+                      <span className="flex-1">{m.name}</span>
+                      {active && <span className="text-primary">✓</span>}
+                    </DropdownMenuItem>
+                  )
+                })}
+                {assigneeFilter.length > 0 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setAssigneeFilter([])} className="text-muted-foreground">
+                      Limpar
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Clear all */}
+            {hasAnyFilter && (
+              <button
+                onClick={clearAllFilters}
+                className="flex items-center gap-1 text-xs h-7 px-2 text-muted-foreground hover:text-foreground transition-colors ml-auto"
+              >
+                <RotateCcw className="size-3" />
+                Limpar filtros
+              </button>
+            )}
           </div>
-        )}
+
+          {/* Row 2: saved views (separated, lower prominence) */}
+          {savedViews.length > 0 && (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium mr-0.5">Visões</span>
+              {savedViews.map(view => (
+                <div key={view.id} className="flex items-center">
+                  <button
+                    onClick={() => { setTodayFilter(false); setActiveViewId(activeViewId === view.id ? null : view.id) }}
+                    className={cn(
+                      "text-xs px-2.5 h-6 rounded-l border border-r-0 transition-colors",
+                      activeViewId === view.id
+                        ? "bg-primary/10 text-primary border-primary/30 font-medium"
+                        : "border-border hover:bg-muted text-muted-foreground"
+                    )}
+                  >
+                    {view.name}
+                  </button>
+                  <button
+                    onClick={() => { deleteSavedView(view.id); if (activeViewId === view.id) setActiveViewId(null) }}
+                    className={cn(
+                      "h-6 px-1.5 rounded-r border transition-colors",
+                      activeViewId === view.id
+                        ? "bg-primary/10 border-primary/30 text-primary hover:bg-primary/20"
+                        : "border-border hover:bg-muted text-muted-foreground hover:text-destructive"
+                    )}
+                  >
+                    <X className="size-2.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col">
           <TabsList className="w-fit">
@@ -295,5 +379,43 @@ export function TasksPage({ onOpenTask, newTaskOpen = false, onNewTaskClose }: P
       <TaskDialog open={isNewOpen} onClose={closeNew} />
       <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
     </>
+  )
+}
+
+interface FilterChipProps {
+  active: boolean
+  onClick: () => void
+  children: React.ReactNode
+  icon?: React.ReactNode
+  badge?: number
+  badgeVariant?: "default" | "danger"
+}
+
+function FilterChip({ active, onClick, children, icon, badge, badgeVariant = "default" }: FilterChipProps) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "flex items-center gap-1.5 text-xs h-7 px-2.5 rounded-md border transition-colors font-medium",
+        active
+          ? "bg-primary text-primary-foreground border-primary"
+          : "border-border hover:bg-muted text-muted-foreground hover:text-foreground"
+      )}
+    >
+      {icon}
+      {children}
+      {badge !== undefined && (
+        <span className={cn(
+          "text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none",
+          active
+            ? "bg-white/20 text-white"
+            : badgeVariant === "danger"
+              ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400"
+              : "bg-muted text-muted-foreground"
+        )}>
+          {badge}
+        </span>
+      )}
+    </button>
   )
 }
