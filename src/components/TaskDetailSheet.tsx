@@ -298,7 +298,7 @@ function TaskDetailContent({ task, onClose }: { task: Task; onClose: () => void 
                     <SelectValue>
                       {task.assignee ? (
                         <span className="flex items-center gap-1.5">
-                          <MemberAvatar member={members.find(m => m.name === task.assignee)} size="xs" />
+                          <MemberAvatar member={members.find(m => m.name === task.assignee)!} size="xs" />
                           {task.assignee}
                         </span>
                       ) : (

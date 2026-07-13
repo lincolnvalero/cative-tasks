@@ -200,7 +200,7 @@ export function TaskDialog({ open, onClose, task, defaultStatus }: TaskDialogPro
                   <SelectValue>
                     {form.assignee ? (
                       <span className="flex items-center gap-1.5">
-                        <MemberAvatar member={members.find(m => m.name === form.assignee)} size="xs" />
+                        <MemberAvatar member={members.find(m => m.name === form.assignee)!} size="xs" />
                         {form.assignee}
                       </span>
                     ) : (
