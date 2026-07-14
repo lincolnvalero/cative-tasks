@@ -24,7 +24,9 @@ interface AppContextValue {
   deleteComment: (taskId: string, commentId: string) => void
   addChecklistItem: (taskId: string, text: string) => void
   toggleChecklistItem: (taskId: string, itemId: string) => void
+  updateChecklistItem: (taskId: string, itemId: string, text: string) => void
   deleteChecklistItem: (taskId: string, itemId: string) => void
+  reorderChecklist: (taskId: string, orderedIds: string[]) => Promise<void>
   addProject: (project: Omit<Project, "id">) => Promise<Project | undefined>
   updateProject: (id: string, patch: Partial<Project>) => void
   deleteProject: (id: string) => void

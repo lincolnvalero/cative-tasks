@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { TaskDialog } from "@/components/TaskDialog"
+import { ChecklistEditor } from "@/components/ChecklistEditor"
 import { ProjectIcon } from "@/components/ProjectIcon"
 import {
   Trash2, Search, Flag, ArrowUpDown,
@@ -63,7 +64,7 @@ function TaskRow({
   dragHandleProps?: Record<string, unknown>
   isDragging?: boolean
 }) {
-  const { projects, deleteTask, moveTask, updateTask, addChecklistItem, toggleChecklistItem, duplicateTask, saving, members } = useApp()
+  const { projects, deleteTask, moveTask, updateTask, addChecklistItem, toggleChecklistItem, updateChecklistItem, deleteChecklistItem, reorderChecklist, duplicateTask, saving, members } = useApp()
   const [savingDate, setSavingDate] = useState(false)
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleValue, setTitleValue] = useState(task.title)
@@ -209,20 +210,14 @@ function TaskRow({
                   </button>
                   {checklistOpen && (
                     <div className="flex flex-col gap-0.5 mt-1 pl-1">
-                      {checklist.map(item => (
-                        <button
-                          key={item.id}
-                          onClick={e => { e.stopPropagation(); toggleChecklistItem(task.id, item.id) }}
-                          className="flex items-center gap-1.5 text-left group"
-                        >
-                          <div className={cn("size-3 rounded border flex items-center justify-center shrink-0 transition-colors", item.done ? "bg-primary border-primary" : "border-muted-foreground/30 group-hover:border-primary")}>
-                            {item.done && <Check className="size-2 text-primary-foreground" />}
-                          </div>
-                          <span className={cn("text-xs italic text-gray-500 dark:text-gray-400", item.done && "line-through opacity-60")}>
-                            {item.text}
-                          </span>
-                        </button>
-                      ))}
+                      <ChecklistEditor
+                        items={checklist}
+                        variant="compact"
+                        onToggle={itemId => toggleChecklistItem(task.id, itemId)}
+                        onDelete={itemId => deleteChecklistItem(task.id, itemId)}
+                        onEdit={(itemId, text) => updateChecklistItem(task.id, itemId, text)}
+                        onReorder={orderedIds => reorderChecklist(task.id, orderedIds)}
+                      />
                       <div className="flex items-center gap-1.5 mt-0.5">
                         <Plus className="size-3 text-muted-foreground/40 shrink-0" />
                         <input

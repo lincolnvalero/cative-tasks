@@ -410,7 +410,8 @@ export function useTaskStore() {
   async function addChecklistItem(taskId: string, text: string) {
     try {
       setSaving(true)
-      const { data, error } = await supabase.from("ct_task_checklist").insert({ task_id: taskId, text, done: false, position: 0 }).select().single()
+      const currentLength = tasks.find(t => t.id === taskId)?.checklist.length ?? 0
+      const { data, error } = await supabase.from("ct_task_checklist").insert({ task_id: taskId, text, done: false, position: currentLength }).select().single()
       if (error || !data) {
         toast.error("Erro ao adicionar item")
         return
@@ -427,7 +428,7 @@ export function useTaskStore() {
       setSaving(true)
       const task = tasks.find(t => t.id === taskId)
       const item = task?.checklist.find(i => i.id === itemId)
-      if (!item) return
+      if (!task || !item) return
 
       const newDone = !item.done
       const { error } = await supabase.from("ct_task_checklist").update({ done: newDone }).eq("id", itemId)
@@ -436,7 +437,29 @@ export function useTaskStore() {
         return
       }
 
-      setTasks(prev => prev.map(t => t.id === taskId ? { ...t, checklist: t.checklist.map(i => i.id === itemId ? { ...i, done: newDone } : i) } : t))
+      const updatedChecklist = task.checklist.map(i => i.id === itemId ? { ...i, done: newDone } : i)
+      setTasks(prev => prev.map(t => t.id === taskId ? { ...t, checklist: updatedChecklist } : t))
+
+      const allDone = updatedChecklist.length > 0 && updatedChecklist.every(i => i.done)
+      if (allDone && task.status !== "done") {
+        await moveTask(taskId, "done")
+      }
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function updateChecklistItem(taskId: string, itemId: string, text: string) {
+    const trimmed = text.trim()
+    if (!trimmed) return
+    try {
+      setSaving(true)
+      const { error } = await supabase.from("ct_task_checklist").update({ text: trimmed }).eq("id", itemId)
+      if (error) {
+        toast.error("Erro ao atualizar item")
+        return
+      }
+      setTasks(prev => prev.map(t => t.id === taskId ? { ...t, checklist: t.checklist.map(i => i.id === itemId ? { ...i, text: trimmed } : i) } : t))
     } finally {
       setSaving(false)
     }
@@ -454,6 +477,17 @@ export function useTaskStore() {
     } finally {
       setSaving(false)
     }
+  }
+
+  async function reorderChecklist(taskId: string, orderedIds: string[]) {
+    setTasks(prev => prev.map(t => {
+      if (t.id !== taskId) return t
+      const byId = Object.fromEntries(t.checklist.map(i => [i.id, i]))
+      return { ...t, checklist: orderedIds.map(id => byId[id]) }
+    }))
+    await Promise.all(
+      orderedIds.map((id, i) => supabase.from("ct_task_checklist").update({ position: i }).eq("id", id))
+    )
   }
 
   // ── Projects ───────────────────────────────────────────────────────────────
@@ -630,7 +664,7 @@ export function useTaskStore() {
     reorderTasks,
     addTask, updateTask, deleteTask, deleteTasks, updateTasks, moveTask,
     addComment, deleteComment,
-    addChecklistItem, toggleChecklistItem, deleteChecklistItem,
+    addChecklistItem, toggleChecklistItem, updateChecklistItem, deleteChecklistItem, reorderChecklist,
     addProject, updateProject, deleteProject,
     addSavedView, deleteSavedView,
     addTaskLink, deleteTaskLink,

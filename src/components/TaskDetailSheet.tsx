@@ -14,12 +14,13 @@ import type { Task, Status, Priority, Recurring } from "@/types/task"
 import { STATUS_CONFIG, PRIORITY_CONFIG, RECURRING_CONFIG } from "@/types/task"
 import { ProjectIcon } from "@/components/ProjectIcon"
 import { MemberAvatar } from "@/components/MemberAvatar"
+import { ChecklistEditor } from "@/components/ChecklistEditor"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { showConfirm } from "@/components/ConfirmDialog"
 import {
   Trash2, Flag, CheckSquare, MessageSquare,
-  Activity, Plus, X, Send, Check, RefreshCw, Copy, Link2, UserPlus,
+  Activity, Plus, X, Send, RefreshCw, Copy, Link2, UserPlus,
 } from "lucide-react"
 import { parseISO, formatDistanceToNow } from "date-fns"
 import { ptBR } from "date-fns/locale"
@@ -46,7 +47,7 @@ function TaskDetailContent({ task, onClose }: { task: Task; onClose: () => void 
   const {
     projects, updateTask, deleteTask, moveTask,
     addComment, deleteComment,
-    addChecklistItem, toggleChecklistItem, deleteChecklistItem,
+    addChecklistItem, toggleChecklistItem, updateChecklistItem, deleteChecklistItem, reorderChecklist,
     addTaskLink, deleteTaskLink, duplicateTask,
     members, addMember,
   } = useApp()
@@ -396,20 +397,13 @@ function TaskDetailContent({ task, onClose }: { task: Task; onClose: () => void 
                     <span className="text-xs text-muted-foreground w-10 text-right">{checklistPct}%</span>
                   </div>
                 )}
-                {checklist.map(item => (
-                  <div key={item.id} className="flex items-center gap-2 group">
-                    <button
-                      onClick={() => toggleChecklistItem(task.id, item.id)}
-                      className={cn("size-4 rounded border flex items-center justify-center shrink-0 transition-colors", item.done ? "bg-primary border-primary text-primary-foreground" : "border-muted-foreground/40 hover:border-primary")}
-                    >
-                      {item.done && <Check className="size-2.5" />}
-                    </button>
-                    <span className={cn("text-sm flex-1", item.done && "line-through text-muted-foreground")}>{item.text}</span>
-                    <button onClick={() => deleteChecklistItem(task.id, item.id)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all">
-                      <X className="size-3.5" />
-                    </button>
-                  </div>
-                ))}
+                <ChecklistEditor
+                  items={checklist}
+                  onToggle={itemId => toggleChecklistItem(task.id, itemId)}
+                  onDelete={itemId => deleteChecklistItem(task.id, itemId)}
+                  onEdit={(itemId, text) => updateChecklistItem(task.id, itemId, text)}
+                  onReorder={orderedIds => reorderChecklist(task.id, orderedIds)}
+                />
                 <div className="flex gap-2 mt-1">
                   <Input
                     placeholder="Adicionar item..."
