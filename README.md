@@ -1,6 +1,6 @@
-# React + TypeScript + Vite + shadcn/ui
+# Lincoln Tasks
 
-This is a template for a new Vite project with React, TypeScript, and shadcn/ui.
+Aplicação de gerenciamento de tarefas construída com React, TypeScript, Vite e shadcn/ui.
 
 ## Adding components
 
