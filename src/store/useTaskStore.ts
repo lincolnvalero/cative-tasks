@@ -96,7 +96,7 @@ export function useTaskStore() {
     })
     // Batch update positions in Supabase
     await Promise.all(
-      orderedIds.map((id, i) => supabase.from("ct_tasks").update({ position: i }).eq("id", id))
+      orderedIds.map((id, i) => supabase.from("lt_tasks").update({ position: i }).eq("id", id))
     )
   }
 
@@ -113,13 +113,13 @@ export function useTaskStore() {
           { data: linkRows },
           { data: viewRows },
         ] = await Promise.all([
-          supabase.from("ct_projects").select("*").order("created_at"),
-          supabase.from("ct_tasks").select("*").order("created_at", { ascending: false }),
-          supabase.from("ct_task_comments").select("*").order("created_at"),
-          supabase.from("ct_task_checklist").select("*").order("position").order("created_at"),
-          supabase.from("ct_task_activity").select("*").order("created_at"),
-          supabase.from("ct_task_links").select("*").order("created_at"),
-          supabase.from("ct_saved_views").select("*").order("created_at"),
+          supabase.from("lt_projects").select("*").order("created_at"),
+          supabase.from("lt_tasks").select("*").order("created_at", { ascending: false }),
+          supabase.from("lt_task_comments").select("*").order("created_at"),
+          supabase.from("lt_task_checklist").select("*").order("position").order("created_at"),
+          supabase.from("lt_task_activity").select("*").order("created_at"),
+          supabase.from("lt_task_links").select("*").order("created_at"),
+          supabase.from("lt_saved_views").select("*").order("created_at"),
         ])
 
         const mappedProjects = (projRows ?? []).map(mapProject)
@@ -161,8 +161,8 @@ export function useTaskStore() {
 
         // Subscribe to realtime changes
         const taskSubscription = supabase
-          .channel('ct_tasks_changes')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'ct_tasks' }, (payload) => {
+          .channel('lt_tasks_changes')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'lt_tasks' }, (payload) => {
             if (payload.eventType === 'UPDATE') {
               setTasks(prev => prev.map(t => t.id === payload.new.id ? mapTask(payload.new, commentsByTask[payload.new.id] ?? [], checklistByTask[payload.new.id] ?? [], activityByTask[payload.new.id] ?? [], linksByTask[payload.new.id] ?? []) : t))
             } else if (payload.eventType === 'INSERT') {
@@ -189,7 +189,7 @@ export function useTaskStore() {
   async function addTask(taskData: Omit<Task, "id" | "createdAt" | "comments" | "checklist" | "activity" | "links">) {
     try {
       setSaving(true)
-      const { data, error } = await supabase.from("ct_tasks").insert({
+      const { data, error } = await supabase.from("lt_tasks").insert({
         title: taskData.title,
         description: taskData.description,
         status: taskData.status,
@@ -209,7 +209,7 @@ export function useTaskStore() {
       }
 
       // Insert initial activity
-      const { data: actRow } = await supabase.from("ct_task_activity").insert({ task_id: data.id, text: "Tarefa criada" }).select().single()
+      const { data: actRow } = await supabase.from("lt_task_activity").insert({ task_id: data.id, text: "Tarefa criada" }).select().single()
       const newTask = mapTask(data, [], [], actRow ? [mapActivity(actRow)] : [], [])
       setTasks(prev => [newTask, ...prev])
       return newTask
@@ -233,7 +233,7 @@ export function useTaskStore() {
       if (patch.assignee !== undefined) dbPatch.assignee = patch.assignee || null
 
       if (Object.keys(dbPatch).length > 0) {
-        const { error } = await supabase.from("ct_tasks").update(dbPatch).eq("id", id)
+        const { error } = await supabase.from("lt_tasks").update(dbPatch).eq("id", id)
         if (error) {
           toast.error("Erro ao atualizar tarefa")
           return
@@ -242,7 +242,7 @@ export function useTaskStore() {
 
       let newActivityEntry: ActivityEntry | undefined
       if (activityText) {
-        const { data, error } = await supabase.from("ct_task_activity").insert({ task_id: id, text: activityText }).select().single()
+        const { data, error } = await supabase.from("lt_task_activity").insert({ task_id: id, text: activityText }).select().single()
         if (error) {
           toast.error("Erro ao registrar atividade")
           return
@@ -285,7 +285,7 @@ export function useTaskStore() {
         onDismiss: async () => {
           if (!undone) {
             // Perform actual deletion after 5 seconds
-            const { error } = await supabase.from("ct_tasks").delete().eq("id", id)
+            const { error } = await supabase.from("lt_tasks").delete().eq("id", id)
             if (error) toast.error("Erro ao excluir tarefa")
           }
         },
@@ -298,7 +298,7 @@ export function useTaskStore() {
   async function deleteTasks(ids: string[]) {
     try {
       setSaving(true)
-      const { error } = await supabase.from("ct_tasks").delete().in("id", ids)
+      const { error } = await supabase.from("lt_tasks").delete().in("id", ids)
       if (error) {
         toast.error("Erro ao excluir tarefas")
         return
@@ -316,7 +316,7 @@ export function useTaskStore() {
       if (patch.status !== undefined) dbPatch.status = patch.status
       if (patch.priority !== undefined) dbPatch.priority = patch.priority
       if (Object.keys(dbPatch).length > 0) {
-        const { error } = await supabase.from("ct_tasks").update(dbPatch).in("id", ids)
+        const { error } = await supabase.from("lt_tasks").update(dbPatch).in("id", ids)
         if (error) {
           toast.error("Erro ao atualizar tarefas")
           return
@@ -332,13 +332,13 @@ export function useTaskStore() {
     try {
       setSaving(true)
       const LABELS: Record<Status, string> = { todo: "A Fazer", "in-progress": "Em Andamento", review: "Revisão", done: "Concluído" }
-      const { error } = await supabase.from("ct_tasks").update({ status }).eq("id", id)
+      const { error } = await supabase.from("lt_tasks").update({ status }).eq("id", id)
       if (error) {
         toast.error("Erro ao atualizar status")
         return
       }
 
-      const { data: actRow } = await supabase.from("ct_task_activity").insert({ task_id: id, text: `Status alterado para ${LABELS[status]}` }).select().single()
+      const { data: actRow } = await supabase.from("lt_task_activity").insert({ task_id: id, text: `Status alterado para ${LABELS[status]}` }).select().single()
       const entry = actRow ? mapActivity(actRow) : undefined
 
       setTasks(prev => {
@@ -353,13 +353,13 @@ export function useTaskStore() {
           if (task?.recurring && task.dueDate) {
             const nextDue = nextRecurringDate(task.dueDate, task.recurring)
             // Insert new task async
-            supabase.from("ct_tasks").insert({
+            supabase.from("lt_tasks").insert({
               title: task.title, description: task.description, status: "todo",
               priority: task.priority, project_id: task.projectId || null,
               due_date: nextDue, tags: task.tags, recurring: task.recurring,
             }).select().single().then(({ data }) => {
               if (!data) return
-              supabase.from("ct_task_activity").insert({ task_id: data.id, text: "Recorrência gerada automaticamente" }).select().single().then(({ data: actR }) => {
+              supabase.from("lt_task_activity").insert({ task_id: data.id, text: "Recorrência gerada automaticamente" }).select().single().then(({ data: actR }) => {
                 const resetChecklist = task.checklist.map(i => ({ ...i, id: crypto.randomUUID(), done: false }))
                 const newTask = mapTask(data, [], resetChecklist, actR ? [mapActivity(actR)] : [], [])
                 setTasks(p => [newTask, ...p])
@@ -379,7 +379,7 @@ export function useTaskStore() {
   async function addComment(taskId: string, text: string) {
     try {
       setSaving(true)
-      const { data, error } = await supabase.from("ct_task_comments").insert({ task_id: taskId, text }).select().single()
+      const { data, error } = await supabase.from("lt_task_comments").insert({ task_id: taskId, text }).select().single()
       if (error || !data) {
         toast.error("Erro ao adicionar comentário")
         return
@@ -394,7 +394,7 @@ export function useTaskStore() {
   async function deleteComment(taskId: string, commentId: string) {
     try {
       setSaving(true)
-      const { error } = await supabase.from("ct_task_comments").delete().eq("id", commentId)
+      const { error } = await supabase.from("lt_task_comments").delete().eq("id", commentId)
       if (error) {
         toast.error("Erro ao excluir comentário")
         return
@@ -411,7 +411,7 @@ export function useTaskStore() {
     try {
       setSaving(true)
       const currentLength = tasks.find(t => t.id === taskId)?.checklist.length ?? 0
-      const { data, error } = await supabase.from("ct_task_checklist").insert({ task_id: taskId, text, done: false, position: currentLength }).select().single()
+      const { data, error } = await supabase.from("lt_task_checklist").insert({ task_id: taskId, text, done: false, position: currentLength }).select().single()
       if (error || !data) {
         toast.error("Erro ao adicionar item")
         return
@@ -431,7 +431,7 @@ export function useTaskStore() {
       if (!task || !item) return
 
       const newDone = !item.done
-      const { error } = await supabase.from("ct_task_checklist").update({ done: newDone }).eq("id", itemId)
+      const { error } = await supabase.from("lt_task_checklist").update({ done: newDone }).eq("id", itemId)
       if (error) {
         toast.error("Erro ao atualizar item")
         return
@@ -454,7 +454,7 @@ export function useTaskStore() {
     if (!trimmed) return
     try {
       setSaving(true)
-      const { error } = await supabase.from("ct_task_checklist").update({ text: trimmed }).eq("id", itemId)
+      const { error } = await supabase.from("lt_task_checklist").update({ text: trimmed }).eq("id", itemId)
       if (error) {
         toast.error("Erro ao atualizar item")
         return
@@ -468,7 +468,7 @@ export function useTaskStore() {
   async function deleteChecklistItem(taskId: string, itemId: string) {
     try {
       setSaving(true)
-      const { error } = await supabase.from("ct_task_checklist").delete().eq("id", itemId)
+      const { error } = await supabase.from("lt_task_checklist").delete().eq("id", itemId)
       if (error) {
         toast.error("Erro ao excluir item")
         return
@@ -486,7 +486,7 @@ export function useTaskStore() {
       return { ...t, checklist: orderedIds.map(id => byId[id]) }
     }))
     await Promise.all(
-      orderedIds.map((id, i) => supabase.from("ct_task_checklist").update({ position: i }).eq("id", id))
+      orderedIds.map((id, i) => supabase.from("lt_task_checklist").update({ position: i }).eq("id", id))
     )
   }
 
@@ -495,7 +495,7 @@ export function useTaskStore() {
   async function addProject(projectData: Omit<Project, "id">) {
     try {
       setSaving(true)
-      const { data, error } = await supabase.from("ct_projects").insert({ name: projectData.name, color: projectData.color, emoji: projectData.emoji, workspace: projectData.workspace ?? "cative" }).select().single()
+      const { data, error } = await supabase.from("lt_projects").insert({ name: projectData.name, color: projectData.color, emoji: projectData.emoji, workspace: projectData.workspace ?? "cative" }).select().single()
       if (error || !data) {
         toast.error("Erro ao criar projeto")
         return
@@ -511,7 +511,7 @@ export function useTaskStore() {
   async function updateProject(id: string, patch: Partial<Project>) {
     try {
       setSaving(true)
-      const { error } = await supabase.from("ct_projects").update({ name: patch.name, color: patch.color, emoji: patch.emoji }).eq("id", id)
+      const { error } = await supabase.from("lt_projects").update({ name: patch.name, color: patch.color, emoji: patch.emoji }).eq("id", id)
       if (error) {
         toast.error("Erro ao atualizar projeto")
         return
@@ -525,7 +525,7 @@ export function useTaskStore() {
   async function deleteProject(id: string) {
     try {
       setSaving(true)
-      const { error } = await supabase.from("ct_projects").delete().eq("id", id)
+      const { error } = await supabase.from("lt_projects").delete().eq("id", id)
       if (error) {
         toast.error("Erro ao excluir projeto")
         return
@@ -542,7 +542,7 @@ export function useTaskStore() {
   async function addSavedView(view: Omit<SavedView, "id">) {
     try {
       setSaving(true)
-      const { data, error } = await supabase.from("ct_saved_views").insert({ name: view.name, filters: view.filters }).select().single()
+      const { data, error } = await supabase.from("lt_saved_views").insert({ name: view.name, filters: view.filters }).select().single()
       if (error || !data) {
         toast.error("Erro ao criar vista")
         return
@@ -562,7 +562,7 @@ export function useTaskStore() {
     }
     try {
       setSaving(true)
-      const { error } = await supabase.from("ct_saved_views").delete().eq("id", id)
+      const { error } = await supabase.from("lt_saved_views").delete().eq("id", id)
       if (error) {
         toast.error("Erro ao excluir vista")
         return
@@ -578,7 +578,7 @@ export function useTaskStore() {
   async function addTaskLink(taskId: string, title: string, url: string) {
     try {
       setSaving(true)
-      const { data, error } = await supabase.from("ct_task_links").insert({ task_id: taskId, title, url }).select().single()
+      const { data, error } = await supabase.from("lt_task_links").insert({ task_id: taskId, title, url }).select().single()
       if (error || !data) {
         toast.error("Erro ao adicionar link")
         return
@@ -593,7 +593,7 @@ export function useTaskStore() {
   async function deleteTaskLink(taskId: string, linkId: string) {
     try {
       setSaving(true)
-      const { error } = await supabase.from("ct_task_links").delete().eq("id", linkId)
+      const { error } = await supabase.from("lt_task_links").delete().eq("id", linkId)
       if (error) {
         toast.error("Erro ao excluir link")
         return
@@ -615,7 +615,7 @@ export function useTaskStore() {
         return
       }
 
-      const { data, error } = await supabase.from("ct_tasks").insert({
+      const { data, error } = await supabase.from("lt_tasks").insert({
         title: `Cópia de ${task.title}`,
         description: task.description,
         status: task.status,
@@ -634,7 +634,7 @@ export function useTaskStore() {
       }
 
       // Insert activity entry
-      const { data: actRow } = await supabase.from("ct_task_activity").insert({
+      const { data: actRow } = await supabase.from("lt_task_activity").insert({
         task_id: data.id,
         text: `Tarefa duplicada de "${task.title}"`
       }).select().single()
@@ -648,7 +648,7 @@ export function useTaskStore() {
       }))
 
       if (resetChecklist.length > 0) {
-        await supabase.from("ct_task_checklist").insert(resetChecklist)
+        await supabase.from("lt_task_checklist").insert(resetChecklist)
       }
 
       const newTask = mapTask(data, [], task.checklist.map((item) => ({ ...item, done: false })), actRow ? [mapActivity(actRow)] : [], [])

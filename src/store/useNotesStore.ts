@@ -22,7 +22,7 @@ export function useNotesStore() {
   useEffect(() => {
     async function load() {
       try {
-        const { data } = await supabase.from("ct_notes").select("*").order("pinned", { ascending: false }).order("updated_at", { ascending: false })
+        const { data } = await supabase.from("lt_notes").select("*").order("pinned", { ascending: false }).order("updated_at", { ascending: false })
         setNotes((data ?? []).map(mapNote))
       } finally { setLoading(false) }
     }
@@ -30,7 +30,7 @@ export function useNotesStore() {
   }, [])
 
   async function createNote(template?: string, initialTags?: string[]): Promise<Note | undefined> {
-    const { data } = await supabase.from("ct_notes").insert({
+    const { data } = await supabase.from("lt_notes").insert({
       title: "", content: template ?? "", color: "default", pinned: false, tags: initialTags ?? []
     }).select().single()
     if (!data) return
@@ -46,12 +46,12 @@ export function useNotesStore() {
     if (patch.color !== undefined) dbPatch.color = patch.color
     if (patch.pinned !== undefined) dbPatch.pinned = patch.pinned
     if (patch.tags !== undefined) dbPatch.tags = patch.tags
-    await supabase.from("ct_notes").update(dbPatch).eq("id", id)
+    await supabase.from("lt_notes").update(dbPatch).eq("id", id)
     setNotes(prev => prev.map(n => n.id === id ? { ...n, ...patch, updatedAt: dbPatch.updated_at as string } : n))
   }
 
   async function deleteNote(id: string) {
-    await supabase.from("ct_notes").delete().eq("id", id)
+    await supabase.from("lt_notes").delete().eq("id", id)
     setNotes(prev => prev.filter(n => n.id !== id))
   }
 

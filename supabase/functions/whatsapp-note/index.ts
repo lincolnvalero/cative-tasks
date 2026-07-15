@@ -116,7 +116,7 @@ Deno.serve(async (req) => {
       const content = lines.slice(1).join("\n").trim()
 
       // Inserir nota no banco
-      const { error } = await supabase.from("ct_notes").insert({
+      const { error } = await supabase.from("lt_notes").insert({
         title,
         content,
         tags,

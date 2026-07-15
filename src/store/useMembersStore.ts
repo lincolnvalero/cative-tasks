@@ -36,7 +36,7 @@ export function useMembersStore() {
   async function fetchMembers() {
     setLoading(true)
     try {
-      const { data, error } = await supabase.from("ct_members").select("*").order("created_at")
+      const { data, error } = await supabase.from("lt_members").select("*").order("created_at")
       if (error || !data || data.length === 0) {
         setMembers(DEFAULT_MEMBERS)
         return
@@ -52,7 +52,7 @@ export function useMembersStore() {
     const color = MEMBER_COLORS.find(c => !usedColors.includes(c)) ?? MEMBER_COLORS[members.length % MEMBER_COLORS.length]
     const initials = toInitials(name)
 
-    const { data, error } = await supabase.from("ct_members").insert({ name, color, initials }).select().single()
+    const { data, error } = await supabase.from("lt_members").insert({ name, color, initials }).select().single()
     if (error || !data) {
       toast.error("Erro ao adicionar colaborador")
       return
@@ -63,7 +63,7 @@ export function useMembersStore() {
   }
 
   async function removeMember(id: string): Promise<void> {
-    const { error } = await supabase.from("ct_members").delete().eq("id", id)
+    const { error } = await supabase.from("lt_members").delete().eq("id", id)
     if (error) {
       toast.error("Erro ao remover colaborador")
       return
@@ -74,7 +74,7 @@ export function useMembersStore() {
   async function updateMember(id: string, patch: Partial<Pick<Member, "name" | "color" | "initials">>): Promise<void> {
     const update: typeof patch = { ...patch }
     if (patch.name && !patch.initials) update.initials = toInitials(patch.name)
-    const { error } = await supabase.from("ct_members").update(update).eq("id", id)
+    const { error } = await supabase.from("lt_members").update(update).eq("id", id)
     if (error) {
       toast.error("Erro ao atualizar colaborador")
       return
