@@ -40,7 +40,7 @@ export function TasksPage({ onOpenTask, newTaskOpen = false, onNewTaskClose }: P
   const [dueDateFilter, setDueDateFilter] = useState<DueDateFilter>(null)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<"kanban" | "list" | "calendar" | "workload">(
-    () => (localStorage.getItem("cative-active-tab") as "kanban" | "list" | "calendar" | "workload") || "kanban"
+    () => (localStorage.getItem("lincoln-active-tab") as "kanban" | "list" | "calendar" | "workload") || "kanban"
   )
 
   const activeProject = projects.find(p => p.id === activeProjectId)
@@ -68,7 +68,7 @@ export function TasksPage({ onOpenTask, newTaskOpen = false, onNewTaskClose }: P
   function handleTabChange(tab: string) {
     if (tab === "kanban" || tab === "list" || tab === "calendar" || tab === "workload") {
       setActiveTab(tab)
-      localStorage.setItem("cative-active-tab", tab)
+      localStorage.setItem("lincoln-active-tab", tab)
     }
   }
 

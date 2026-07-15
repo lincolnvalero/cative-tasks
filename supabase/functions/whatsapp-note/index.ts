@@ -11,14 +11,14 @@
  * 2. No painel da Evolution API, configure:
  *    - Crie uma instância e conecte seu WhatsApp via QR Code
  *    - Em "Webhooks", adicione a URL desta função:
- *      https://yyjaxrwbaznestbmdypf.supabase.co/functions/v1/whatsapp-note
+ *      https://bplpowejgqukfsqxfhoj.supabase.co/functions/v1/whatsapp-note
  *    - Eventos: MESSAGES_UPSERT
  *
  * 3. Deploy desta função:
- *    supabase functions deploy whatsapp-note --project-ref yyjaxrwbaznestbmdypf
+ *    supabase functions deploy whatsapp-note --project-ref bplpowejgqukfsqxfhoj
  *
  * 4. Variáveis de ambiente necessárias (supabase secrets set):
- *    supabase secrets set SUPABASE_URL=https://yyjaxrwbaznestbmdypf.supabase.co
+ *    supabase secrets set SUPABASE_URL=https://bplpowejgqukfsqxfhoj.supabase.co
  *    supabase secrets set SUPABASE_SERVICE_ROLE_KEY=<sua service role key>
  *    supabase secrets set WHATSAPP_ALLOWED_NUMBER=55XXXXXXXXXXX (seu número, só dígitos)
  *    supabase secrets set WEBHOOK_SECRET=<qualquer string secreta>

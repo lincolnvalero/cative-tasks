@@ -38,10 +38,10 @@ export function DashboardPage() {
 
   // Detect localStorage data — tarefas E projetos
   const [localTasks, setLocalTasks] = useState<Task[]>(() => {
-    try { return JSON.parse(localStorage.getItem('cative-tasks') || '[]') } catch { return [] }
+    try { return JSON.parse(localStorage.getItem('lincoln-tasks') || '[]') } catch { return [] }
   })
   const [localProjects] = useState<Array<{id:string;name:string;color:string;emoji:string}>>(() => {
-    try { return JSON.parse(localStorage.getItem('cative-projects') || '[]') } catch { return [] }
+    try { return JSON.parse(localStorage.getItem('lincoln-projects') || '[]') } catch { return [] }
   })
 
   const [isMigrating, setIsMigrating] = useState(false)
@@ -116,7 +116,7 @@ export function DashboardPage() {
 
       // Só limpa localStorage se TODAS importaram com sucesso
       if (errors.length === 0) {
-        localStorage.removeItem('cative-tasks')
+        localStorage.removeItem('lincoln-tasks')
         setLocalTasks([])
         toast.success(`✅ ${imported} tarefas importadas com sucesso!`)
       } else {

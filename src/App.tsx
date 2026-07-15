@@ -44,7 +44,7 @@ function AppInner() {
 
   // Check for tasks due today
   useEffect(() => {
-    const notifiedKey = "cative-today-notification"
+    const notifiedKey = "lincoln-today-notification"
     const already = sessionStorage.getItem(notifiedKey)
     if (!already && tasks.length > 0) {
       const dueTodayCount = tasks.filter(t => {
