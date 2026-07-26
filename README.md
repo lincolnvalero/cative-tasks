@@ -1,6 +1,6 @@
-# Lincoln Tasks
+# Lincoln General System
 
-Aplicação de gerenciamento de tarefas construída com React, TypeScript, Vite e shadcn/ui.
+Aplicação pessoal construída com React, TypeScript, Vite e shadcn/ui — gestão de tarefas, projetos, notas e acompanhamento das aulas de canto. Anteriormente chamado de Lincoln-tasks.
 
 ## Adding components
 

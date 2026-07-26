@@ -786,7 +786,7 @@ export function ListView({ onOpenTask, appliedView, todayFilter = false, noDueDa
     const url = URL.createObjectURL(blob)
     const link = document.createElement("a")
     link.href = url
-    link.download = `lincoln-tasks-${new Date().toISOString().slice(0, 10)}.csv`
+    link.download = `lincoln-general-system-${new Date().toISOString().slice(0, 10)}.csv`
     link.click()
     URL.revokeObjectURL(url)
     toast.success("CSV exportado!")

@@ -61,7 +61,7 @@ export function AppSidebar({ page, onNavigate }: Props) {
               <Zap className="size-4 text-primary-foreground" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold leading-tight">Lincoln Tasks</p>
+              <p className="text-sm font-semibold leading-tight">Lincoln General System</p>
               <p className="text-xs text-muted-foreground">Gestão pessoal</p>
             </div>
           </div>

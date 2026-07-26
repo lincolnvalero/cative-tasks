@@ -1,7 +1,7 @@
 /**
  * Edge Function: whatsapp-note
  *
- * Recebe webhooks da Evolution API e cria notas no Lincoln Tasks.
+ * Recebe webhooks da Evolution API e cria notas no Lincoln General System.
  *
  * SETUP:
  * 1. Instale a Evolution API: https://doc.evolution-api.com/

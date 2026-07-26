@@ -38,7 +38,7 @@ export function DashboardPage() {
 
   // Detect localStorage data — tarefas E projetos
   const [localTasks, setLocalTasks] = useState<Task[]>(() => {
-    try { return JSON.parse(localStorage.getItem('lincoln-tasks') || '[]') } catch { return [] }
+    try { return JSON.parse(localStorage.getItem('lincoln-general-system') || '[]') } catch { return [] }
   })
   const [localProjects] = useState<Array<{id:string;name:string;color:string;emoji:string}>>(() => {
     try { return JSON.parse(localStorage.getItem('lincoln-projects') || '[]') } catch { return [] }
@@ -116,7 +116,7 @@ export function DashboardPage() {
 
       // Só limpa localStorage se TODAS importaram com sucesso
       if (errors.length === 0) {
-        localStorage.removeItem('lincoln-tasks')
+        localStorage.removeItem('lincoln-general-system')
         setLocalTasks([])
         toast.success(`✅ ${imported} tarefas importadas com sucesso!`)
       } else {
