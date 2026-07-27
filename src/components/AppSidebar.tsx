@@ -6,7 +6,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { useApp } from "@/context/AppContext"
 import type { Status } from "@/types/task"
-import { LayoutDashboard, CheckSquare, FolderKanban, Zap, StickyNote, User, Building2, LayoutList, PanelLeftClose, PanelLeftOpen, Users, MicVocal } from "lucide-react"
+import { LayoutDashboard, CheckSquare, FolderKanban, Zap, StickyNote, User, Building2, LayoutList, PanelLeftClose, PanelLeftOpen, Users, MicVocal, Inbox } from "lucide-react"
 import { ProjectIcon } from "@/components/ProjectIcon"
 
 function CollapseButton() {
@@ -29,7 +29,7 @@ function CollapseButton() {
   )
 }
 
-type Page = "dashboard" | "tasks" | "projects" | "notes" | "collaborators" | "singing"
+type Page = "dashboard" | "tasks" | "projects" | "notes" | "collaborators" | "singing" | "inbox"
 
 interface Props {
   page: Page
@@ -121,6 +121,15 @@ export function AppSidebar({ page, onNavigate }: Props) {
               >
                 <MicVocal />
                 <span>Canto</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                isActive={page === "inbox"}
+                onClick={() => { onNavigate("inbox"); setActiveProjectId(null) }}
+              >
+                <Inbox />
+                <span>Inbox</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>

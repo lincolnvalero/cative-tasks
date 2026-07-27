@@ -8,6 +8,7 @@ import { ProjectsPage } from "@/pages/ProjectsPage"
 import { NotesPage } from "@/pages/NotesPage"
 import { CollaboratorsPage } from "@/pages/CollaboratorsPage"
 import { SingingPage } from "@/pages/SingingPage"
+import { InboxPage } from "@/pages/InboxPage"
 import { TaskDetailSheet } from "@/components/TaskDetailSheet"
 import { CommandPalette } from "@/components/CommandPalette"
 import { ConfirmDialogProvider } from "@/components/ConfirmDialog"
@@ -22,7 +23,7 @@ import { Sun, Moon, Monitor, Search, Loader2 } from "lucide-react"
 import type { Task } from "@/types/task"
 import { isToday, parseISO } from "date-fns"
 
-type Page = "dashboard" | "tasks" | "projects" | "notes" | "collaborators" | "singing"
+type Page = "dashboard" | "tasks" | "projects" | "notes" | "collaborators" | "singing" | "inbox"
 
 function ThemeToggle() {
   const { theme, setTheme } = useTheme()
@@ -41,7 +42,7 @@ function AppInner() {
   const [detailTask, setDetailTask] = useState<Task | null>(null)
   const [newTaskOpen, setNewTaskOpen] = useState(false)
 
-  const PAGE_LABELS: Record<Page, string> = { dashboard: "Dashboard", tasks: "Tarefas", projects: "Projetos", notes: "Notas", collaborators: "Colaboradores", singing: "Canto" }
+  const PAGE_LABELS: Record<Page, string> = { dashboard: "Dashboard", tasks: "Tarefas", projects: "Projetos", notes: "Notas", collaborators: "Colaboradores", singing: "Canto", inbox: "Inbox" }
 
   // Check for tasks due today
   useEffect(() => {
@@ -110,6 +111,7 @@ function AppInner() {
           {!loading && page === "notes" && <NotesPage />}
           {!loading && page === "collaborators" && <CollaboratorsPage />}
           {!loading && page === "singing" && <SingingPage />}
+          {!loading && page === "inbox" && <InboxPage />}
         </main>
       </SidebarInset>
 
