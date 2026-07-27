@@ -9,6 +9,7 @@ import { NotesPage } from "@/pages/NotesPage"
 import { CollaboratorsPage } from "@/pages/CollaboratorsPage"
 import { SingingPage } from "@/pages/SingingPage"
 import { InboxPage } from "@/pages/InboxPage"
+import { JarvisPanel } from "@/components/jarvis/JarvisPanel"
 import { TaskDetailSheet } from "@/components/TaskDetailSheet"
 import { CommandPalette } from "@/components/CommandPalette"
 import { ConfirmDialogProvider } from "@/components/ConfirmDialog"
@@ -19,7 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useTheme } from "@/components/theme-provider"
 import { useApp } from "@/context/AppContext"
 import { Toaster, toast } from "sonner"
-import { Sun, Moon, Monitor, Search, Loader2 } from "lucide-react"
+import { Sun, Moon, Monitor, Search, Loader2, Bot } from "lucide-react"
 import type { Task } from "@/types/task"
 import { isToday, parseISO } from "date-fns"
 
@@ -41,6 +42,7 @@ function AppInner() {
   const [page, setPage] = useState<Page>("dashboard")
   const [detailTask, setDetailTask] = useState<Task | null>(null)
   const [newTaskOpen, setNewTaskOpen] = useState(false)
+  const [jarvisOpen, setJarvisOpen] = useState(false)
 
   const PAGE_LABELS: Record<Page, string> = { dashboard: "Dashboard", tasks: "Tarefas", projects: "Projetos", notes: "Notas", collaborators: "Colaboradores", singing: "Canto", inbox: "Inbox" }
 
@@ -85,6 +87,9 @@ function AppInner() {
               <TooltipContent side="bottom">Salvando...</TooltipContent>
             </Tooltip>
           )}
+          <Button variant="ghost" size="icon" className="size-8" title="Jarvis" onClick={() => setJarvisOpen(true)}>
+            <Bot className="size-4" />
+          </Button>
           <ThemeToggle />
         </header>
 
@@ -127,6 +132,7 @@ function AppInner() {
         setActiveProjectId={setActiveProjectId}
       />
       <ConfirmDialogProvider />
+      <JarvisPanel open={jarvisOpen} onClose={() => setJarvisOpen(false)} />
     </SidebarProvider>
   )
 }
