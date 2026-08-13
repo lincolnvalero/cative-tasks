@@ -11,26 +11,7 @@ import { isPast, parseISO, isToday } from "date-fns"
 import { Plus, Trash2, Pencil, Check, X, ChevronDown, ChevronUp } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
-
-type Role = "admin" | "editor" | "viewer"
-
-const ROLE_CONFIG: Record<Role, { label: string; color: string }> = {
-  admin:  { label: "Admin",     color: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" },
-  editor: { label: "Editor",    color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
-  viewer: { label: "Visualizador", color: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400" },
-}
-
-function getMemberMeta(id: string): { role: Role; active: boolean } {
-  try {
-    const raw = localStorage.getItem(`lincoln-member-${id}`)
-    if (raw) return JSON.parse(raw)
-  } catch { /* ignore */ }
-  return { role: "editor", active: true }
-}
-
-function setMemberMeta(id: string, meta: { role: Role; active: boolean }) {
-  localStorage.setItem(`lincoln-member-${id}`, JSON.stringify(meta))
-}
+import { type Role, ROLE_CONFIG, getMemberMeta, setMemberMeta } from "@/lib/memberRole"
 
 interface MemberCardProps {
   memberId: string

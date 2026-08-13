@@ -7,20 +7,22 @@ interface Props {
   page: Page
   onNavigate: (p: Page) => void
   onSearch: () => void
+  isAdmin: boolean
 }
 
-const ITEMS = [
+const BASE_ITEMS = [
   { id: "dashboard" as Page, label: "Dashboard", Icon: LayoutDashboard },
   { id: "tasks" as Page,     label: "Tarefas",   Icon: CheckSquare },
   { id: "projects" as Page,  label: "Projetos",  Icon: FolderKanban },
   { id: "notes" as Page,     label: "Notas",     Icon: StickyNote },
-  { id: "singing" as Page,   label: "Canto",     Icon: MicVocal },
 ]
+const ADMIN_ITEM = { id: "singing" as Page, label: "Canto", Icon: MicVocal }
 
-export function BottomNav({ page, onNavigate, onSearch }: Props) {
+export function BottomNav({ page, onNavigate, onSearch, isAdmin }: Props) {
+  const items = isAdmin ? [...BASE_ITEMS, ADMIN_ITEM] : BASE_ITEMS
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 flex md:hidden border-t bg-background/95 backdrop-blur">
-      {ITEMS.map(({ id, label, Icon }) => (
+      {items.map(({ id, label, Icon }) => (
         <button
           key={id}
           onClick={() => onNavigate(id)}

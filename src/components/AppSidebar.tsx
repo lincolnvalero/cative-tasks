@@ -4,10 +4,12 @@ import {
   SidebarHeader, SidebarFooter, SidebarSeparator, useSidebar,
 } from "@/components/ui/sidebar"
 import { Badge } from "@/components/ui/badge"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useApp } from "@/context/AppContext"
-import type { Status } from "@/types/task"
-import { LayoutDashboard, CheckSquare, FolderKanban, Zap, StickyNote, User, Building2, LayoutList, PanelLeftClose, PanelLeftOpen, Users, MicVocal, Inbox } from "lucide-react"
+import type { Status, Member } from "@/types/task"
+import { LayoutDashboard, CheckSquare, FolderKanban, StickyNote, User, Building2, LayoutList, PanelLeftClose, PanelLeftOpen, Users, MicVocal, Inbox, ChevronsUpDown } from "lucide-react"
 import { ProjectIcon } from "@/components/ProjectIcon"
+import { MemberAvatar } from "@/components/MemberAvatar"
 
 function CollapseButton() {
   const { toggleSidebar, open } = useSidebar()
@@ -34,12 +36,15 @@ type Page = "dashboard" | "tasks" | "projects" | "notes" | "collaborators" | "si
 interface Props {
   page: Page
   onNavigate: (p: Page) => void
+  isAdmin: boolean
+  currentMember: Member | null
+  onChangeCurrentMember: (id: string | null) => void
 }
 
 const ACTIVE_STATUSES: Status[] = ["todo", "in-progress", "review"]
 
-export function AppSidebar({ page, onNavigate }: Props) {
-  const { tasks, projects, activeProjectId, setActiveProjectId } = useApp()
+export function AppSidebar({ page, onNavigate, isAdmin, currentMember, onChangeCurrentMember }: Props) {
+  const { tasks, projects, members, activeProjectId, setActiveProjectId } = useApp()
 
   const activeTasks = tasks.filter(t => ACTIVE_STATUSES.includes(t.status)).length
 
@@ -57,12 +62,10 @@ export function AppSidebar({ page, onNavigate }: Props) {
       <SidebarHeader>
         <div className="flex flex-col gap-2 px-2 py-1">
           <div className="flex items-center gap-2">
-            <div className="size-8 rounded-lg bg-primary flex items-center justify-center shrink-0">
-              <Zap className="size-4 text-primary-foreground" />
-            </div>
+            <img src="/logo.svg" alt="" className="size-8 rounded-lg shrink-0" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold leading-tight">Lincoln General System</p>
-              <p className="text-xs text-muted-foreground">Gestão pessoal</p>
+              <p className="text-sm font-semibold leading-tight">Tasks System</p>
+              <p className="text-xs text-muted-foreground">Gestão de Projetos</p>
             </div>
           </div>
 
@@ -114,24 +117,28 @@ export function AppSidebar({ page, onNavigate }: Props) {
                 <span>Notas</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                isActive={page === "singing"}
-                onClick={() => { onNavigate("singing"); setActiveProjectId(null) }}
-              >
-                <MicVocal />
-                <span>Canto</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                isActive={page === "inbox"}
-                onClick={() => { onNavigate("inbox"); setActiveProjectId(null) }}
-              >
-                <Inbox />
-                <span>Inbox</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+            {isAdmin && (
+              <>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    isActive={page === "singing"}
+                    onClick={() => { onNavigate("singing"); setActiveProjectId(null) }}
+                  >
+                    <MicVocal />
+                    <span>Canto</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    isActive={page === "inbox"}
+                    onClick={() => { onNavigate("inbox"); setActiveProjectId(null) }}
+                  >
+                    <Inbox />
+                    <span>Inbox</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </>
+            )}
           </SidebarMenu>
         </SidebarGroup>
 
@@ -241,6 +248,38 @@ export function AppSidebar({ page, onNavigate }: Props) {
         <div className="px-2 py-1 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
           {tasks.filter(t => t.status === "done").length} de {tasks.length} tarefas concluídas
         </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              className="w-full h-9 rounded-lg flex items-center gap-2 px-2 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors border border-border group-data-[collapsible=icon]:justify-center"
+              title="Quem é você?"
+            >
+              {currentMember ? (
+                <MemberAvatar member={currentMember} size="xs" />
+              ) : (
+                <User className="size-4 shrink-0" />
+              )}
+              <span className="flex-1 text-left truncate group-data-[collapsible=icon]:hidden">
+                {currentMember ? currentMember.name : "Quem é você?"}
+              </span>
+              <ChevronsUpDown className="size-3.5 shrink-0 group-data-[collapsible=icon]:hidden" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-56">
+            {members.map(m => (
+              <DropdownMenuItem key={m.id} onClick={() => onChangeCurrentMember(m.id)} className="gap-2">
+                <MemberAvatar member={m} size="xs" />
+                <span className="flex-1">{m.name}</span>
+                {currentMember?.id === m.id && <span className="text-primary">✓</span>}
+              </DropdownMenuItem>
+            ))}
+            {currentMember && (
+              <DropdownMenuItem onClick={() => onChangeCurrentMember(null)} className="text-muted-foreground">
+                Sair da identidade
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
         <CollapseButton />
       </SidebarFooter>
     </Sidebar>

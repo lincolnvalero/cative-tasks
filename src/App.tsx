@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useTheme } from "@/components/theme-provider"
 import { useApp } from "@/context/AppContext"
+import { useCurrentMember } from "@/hooks/useCurrentMember"
 import { Toaster, toast } from "sonner"
 import { Sun, Moon, Monitor, Search, Loader2, Bot } from "lucide-react"
 import type { Task } from "@/types/task"
@@ -37,14 +38,22 @@ function ThemeToggle() {
   )
 }
 
+const ADMIN_ONLY_PAGES: Page[] = ["singing", "inbox"]
+
 function AppInner() {
   const { loading, saving, setActiveProjectId, tasks } = useApp()
+  const { currentMember, setCurrentMemberId, isAdmin } = useCurrentMember()
   const [page, setPage] = useState<Page>("dashboard")
   const [detailTask, setDetailTask] = useState<Task | null>(null)
   const [newTaskOpen, setNewTaskOpen] = useState(false)
   const [jarvisOpen, setJarvisOpen] = useState(false)
 
   const PAGE_LABELS: Record<Page, string> = { dashboard: "Dashboard", tasks: "Tarefas", projects: "Projetos", notes: "Notas", collaborators: "Colaboradores", singing: "Canto", inbox: "Inbox" }
+
+  // Sai de uma página restrita a admin se a identidade atual deixar de ser admin
+  useEffect(() => {
+    if (!isAdmin && ADMIN_ONLY_PAGES.includes(page)) setPage("dashboard")
+  }, [isAdmin, page])
 
   // Check for tasks due today
   useEffect(() => {
@@ -68,7 +77,13 @@ function AppInner() {
 
   return (
     <SidebarProvider>
-      <AppSidebar page={page} onNavigate={setPage} />
+      <AppSidebar
+        page={page}
+        onNavigate={setPage}
+        isAdmin={isAdmin}
+        currentMember={currentMember}
+        onChangeCurrentMember={setCurrentMemberId}
+      />
       <SidebarInset>
         {/* Header */}
         <header className="flex h-12 shrink-0 items-center gap-2 border-b px-3 md:px-4">
@@ -121,7 +136,7 @@ function AppInner() {
       </SidebarInset>
 
       {/* Mobile bottom nav */}
-      <BottomNav page={page} onNavigate={setPage} onSearch={triggerSearch} />
+      <BottomNav page={page} onNavigate={setPage} onSearch={triggerSearch} isAdmin={isAdmin} />
 
       {/* Global overlays */}
       <TaskDetailSheet task={detailTask} onClose={() => setDetailTask(null)} />

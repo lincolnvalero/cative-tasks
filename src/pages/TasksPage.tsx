@@ -81,7 +81,7 @@ export function TasksPage({ onOpenTask, newTaskOpen = false, onNewTaskClose }: P
       t.status !== "done" && t.dueDate &&
       (isPast(parseISO(t.dueDate)) || isToday(parseISO(t.dueDate)))
     ).length
-    document.title = urgent > 0 ? `(${urgent}) Lincoln General System` : "Lincoln General System"
+    document.title = urgent > 0 ? `(${urgent}) Tasks System` : "Tasks System"
   }, [tasks])
 
   useEffect(() => {
