@@ -27,7 +27,7 @@
  * USO NO WHATSAPP: mande o link do vídeo com uma legenda curta, em qualquer
  * ordem, na conversa configurada:
  *   "IA generativa pra criar UI direto do Figma https://youtu.be/abc123"
- *   "https://www.instagram.com/reel/xyz789 golpe de guarda pro Reneg treinar"
+ *   "https://www.instagram.com/reel/xyz789 golpe de guarda pra treinar"
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
