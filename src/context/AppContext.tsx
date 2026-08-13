@@ -26,18 +26,16 @@ interface AppContextValue {
   updateChecklistItem: (taskId: string, itemId: string, text: string) => void
   deleteChecklistItem: (taskId: string, itemId: string) => void
   reorderChecklist: (taskId: string, orderedIds: string[]) => Promise<void>
-  addProject: (project: Omit<Project, "id">) => Promise<Project | undefined>
+  addProject: (project: Omit<Project, "id" | "createdBy">) => Promise<Project | undefined>
   updateProject: (id: string, patch: Partial<Project>) => Promise<boolean>
   deleteProject: (id: string) => Promise<boolean>
   addTaskLink: (taskId: string, title: string, url: string) => void
   deleteTaskLink: (taskId: string, linkId: string) => void
   duplicateTask: (id: string) => Promise<Task | undefined>
-  // Members
+  // Members (perfis reais — só leitura aqui; gestão de conta fica em UsersPage)
   members: Member[]
   membersLoading: boolean
-  addMember: (name: string) => Promise<Member | undefined>
-  removeMember: (id: string) => Promise<void>
-  updateMember: (id: string, patch: Partial<Pick<Member, "name" | "color" | "initials">>) => Promise<boolean>
+  refetchMembers: () => Promise<void>
 }
 
 const AppContext = createContext<AppContextValue | null>(null)
@@ -62,9 +60,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       activeWorkspace, setActiveWorkspace: handleSetWorkspace,
       members: membersStore.members,
       membersLoading: membersStore.loading,
-      addMember: membersStore.addMember,
-      removeMember: membersStore.removeMember,
-      updateMember: membersStore.updateMember,
+      refetchMembers: membersStore.fetchMembers,
     }}>
       {children}
     </AppContext.Provider>

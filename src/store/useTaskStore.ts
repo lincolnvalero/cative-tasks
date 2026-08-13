@@ -2,7 +2,6 @@ import { useState, useEffect } from "react"
 import { addDays, addWeeks, addMonths, format, parseISO } from "date-fns"
 import { toast } from "sonner"
 import type { Task, Project, Status, Comment, ChecklistItem, ActivityEntry, Recurring, TaskLink } from "@/types/task"
-import { DEFAULT_PROJECTS } from "@/types/task"
 import { supabase } from "@/lib/supabase"
 
 // ── Mappers DB → App ──────────────────────────────────────────────────────────
@@ -14,6 +13,7 @@ function mapProject(row: Record<string, unknown>): Project {
     color: row.color as string,
     emoji: row.emoji as string,
     workspace: ((row.workspace as string) ?? "cative") as import("@/types/task").Workspace,
+    createdBy: (row.created_by as string) ?? null,
   }
 }
 
@@ -115,8 +115,7 @@ export function useTaskStore() {
           supabase.from("lt_task_links").select("*").order("created_at"),
         ])
 
-        const mappedProjects = (projRows ?? []).map(mapProject)
-        setProjects(mappedProjects.length ? mappedProjects : DEFAULT_PROJECTS)
+        setProjects((projRows ?? []).map(mapProject))
 
         const commentsByTask: Record<string, Comment[]> = {}
         const checklistByTask: Record<string, ChecklistItem[]> = {}
@@ -487,13 +486,20 @@ export function useTaskStore() {
 
   // ── Projects ───────────────────────────────────────────────────────────────
 
-  async function addProject(projectData: Omit<Project, "id">) {
+  async function addProject(projectData: Omit<Project, "id" | "createdBy">) {
     try {
       setSaving(true)
-      const { data, error } = await supabase.from("lt_projects").insert({ name: projectData.name, color: projectData.color, emoji: projectData.emoji, workspace: projectData.workspace ?? "cative" }).select().single()
+      const { data: { user } } = await supabase.auth.getUser()
+      const { data, error } = await supabase.from("lt_projects").insert({
+        name: projectData.name, color: projectData.color, emoji: projectData.emoji,
+        workspace: projectData.workspace ?? "cative", created_by: user?.id ?? null,
+      }).select().single()
       if (error || !data) {
         toast.error("Erro ao criar projeto")
         return
+      }
+      if (user) {
+        await supabase.from("lt_project_members").insert({ project_id: data.id, user_id: user.id, role: "owner" })
       }
       const p = mapProject(data)
       setProjects(prev => [...prev, p])

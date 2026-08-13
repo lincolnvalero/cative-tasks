@@ -8,7 +8,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Progress } from "@/components/ui/progress"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { useApp } from "@/context/AppContext"
 import type { Task, Status, Priority, Recurring } from "@/types/task"
 import { STATUS_CONFIG, PRIORITY_CONFIG, RECURRING_CONFIG } from "@/types/task"
@@ -20,7 +19,7 @@ import { toast } from "sonner"
 import { showConfirm } from "@/components/ConfirmDialog"
 import {
   Trash2, Flag, CheckSquare, MessageSquare,
-  Activity, Plus, X, Send, RefreshCw, Copy, Link2, UserPlus,
+  Activity, Plus, X, Send, RefreshCw, Copy, Link2,
 } from "lucide-react"
 import { parseISO, formatDistanceToNow } from "date-fns"
 import { ptBR } from "date-fns/locale"
@@ -49,25 +48,8 @@ function TaskDetailContent({ task, onClose }: { task: Task; onClose: () => void 
     addComment, deleteComment,
     addChecklistItem, toggleChecklistItem, updateChecklistItem, deleteChecklistItem, reorderChecklist,
     addTaskLink, deleteTaskLink, duplicateTask,
-    members, addMember,
+    members,
   } = useApp()
-
-  const [addMemberOpen, setAddMemberOpen] = useState(false)
-  const [newMemberName, setNewMemberName] = useState("")
-
-  async function handleAddMember() {
-    const name = newMemberName.trim()
-    if (!name) return
-    const m = await addMember(name)
-    if (m) {
-      const ok = await updateTask(task.id, { assignee: m.name }, `Responsável: ${m.name}`)
-      if (ok) toast.success(`${m.name} adicionado`)
-    } else {
-      toast.error("Já existe um membro com esse nome")
-    }
-    setNewMemberName("")
-    setAddMemberOpen(false)
-  }
 
   const [title, setTitle] = useState(task.title)
   const [description, setDescription] = useState(task.description)
@@ -290,10 +272,7 @@ function TaskDetailContent({ task, onClose }: { task: Task; onClose: () => void 
               <div className="flex items-center gap-1 w-full">
                 <Select
                   value={task.assignee ?? "none"}
-                  onValueChange={v => {
-                    if (v === "__add__") { setAddMemberOpen(true); return }
-                    updateTask(task.id, { assignee: v === "none" ? null : v }, `Responsável: ${v === "none" ? "Ninguém" : v}`)
-                  }}
+                  onValueChange={v => updateTask(task.id, { assignee: v === "none" ? null : v }, `Responsável: ${v === "none" ? "Ninguém" : v}`)}
                 >
                   <SelectTrigger className="h-8 text-xs border-0 shadow-none bg-transparent focus:ring-0 flex-1 justify-start gap-2">
                     <SelectValue>
@@ -317,34 +296,11 @@ function TaskDetailContent({ task, onClose }: { task: Task; onClose: () => void 
                         </span>
                       </SelectItem>
                     ))}
-                    <SelectItem value="__add__" className="text-xs text-primary border-t mt-1 pt-1">
-                      <span className="flex items-center gap-1.5">
-                        <UserPlus className="size-3" /> Novo responsável...
-                      </span>
-                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </PropRow>
           </div>
-
-          {/* Dialog: Novo responsável */}
-          <Dialog open={addMemberOpen} onOpenChange={v => { if (!v) { setAddMemberOpen(false); setNewMemberName("") } }}>
-            <DialogContent className="max-w-sm">
-              <DialogHeader><DialogTitle>Novo responsável</DialogTitle></DialogHeader>
-              <Input
-                placeholder="Nome da pessoa"
-                value={newMemberName}
-                onChange={e => setNewMemberName(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && handleAddMember()}
-                autoFocus
-              />
-              <DialogFooter>
-                <Button variant="outline" onClick={() => { setAddMemberOpen(false); setNewMemberName("") }}>Cancelar</Button>
-                <Button onClick={handleAddMember} disabled={!newMemberName.trim()}>Adicionar</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
 
           {task.tags.length > 0 && (
             <div className="flex flex-wrap gap-1.5">

@@ -1,5 +1,7 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useApp } from "@/context/AppContext"
+import { useAuth } from "@/context/AuthContext"
+import { supabase } from "@/lib/supabase"
 import type { Project } from "@/types/task"
 import { PROJECT_COLORS } from "@/types/task"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -8,18 +10,43 @@ import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { ProjectIcon, PROJECT_ICONS } from "@/components/ProjectIcon"
+import { MemberAvatar } from "@/components/MemberAvatar"
 import { showConfirm } from "@/components/ConfirmDialog"
-import { Plus, Pencil, Trash2, CheckCircle2, Clock } from "lucide-react"
+import { Plus, Pencil, Trash2, CheckCircle2, Clock, Users, Check } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 
 const emptyForm = { name: "", emoji: "target", color: PROJECT_COLORS[0], workspace: "personal" as import("@/types/task").Workspace }
 
 export function ProjectsPage() {
-  const { projects, tasks, addProject, updateProject, deleteProject } = useApp()
+  const { projects, tasks, members, addProject, updateProject, deleteProject } = useApp()
+  const { profile, isAdmin } = useAuth()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingProject, setEditingProject] = useState<Project | null>(null)
   const [form, setForm] = useState(emptyForm)
+  const [inviteProject, setInviteProject] = useState<Project | null>(null)
+  const [projectMemberIds, setProjectMemberIds] = useState<string[]>([])
+
+  useEffect(() => {
+    if (!inviteProject) return
+    supabase.from("lt_project_members").select("user_id").eq("project_id", inviteProject.id)
+      .then(({ data }) => setProjectMemberIds((data ?? []).map(r => r.user_id as string)))
+  }, [inviteProject])
+
+  async function toggleProjectMember(userId: string) {
+    if (!inviteProject) return
+    const has = projectMemberIds.includes(userId)
+    if (has) {
+      const { error } = await supabase.from("lt_project_members").delete()
+        .eq("project_id", inviteProject.id).eq("user_id", userId)
+      if (error) { toast.error("Erro ao remover acesso"); return }
+      setProjectMemberIds(prev => prev.filter(id => id !== userId))
+    } else {
+      const { error } = await supabase.from("lt_project_members").insert({ project_id: inviteProject.id, user_id: userId })
+      if (error) { toast.error("Erro ao conceder acesso"); return }
+      setProjectMemberIds(prev => [...prev, userId])
+    }
+  }
 
   function openNew() {
     setEditingProject(null)
@@ -103,6 +130,11 @@ export function ProjectsPage() {
                       </div>
                     </div>
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {(isAdmin || project.createdBy === profile?.id) && (
+                        <Button variant="ghost" size="icon" className="size-7" title="Convidar" onClick={() => setInviteProject(project)}>
+                          <Users className="size-3.5" />
+                        </Button>
+                      )}
                       <Button variant="ghost" size="icon" className="size-7" onClick={() => openEdit(project)}>
                         <Pencil className="size-3.5" />
                       </Button>
@@ -240,6 +272,31 @@ export function ProjectsPage() {
               {editingProject ? "Salvar" : "Criar projeto"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!inviteProject} onOpenChange={v => !v && setInviteProject(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Convidar pra "{inviteProject?.name}"</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-1 max-h-72 overflow-y-auto">
+            {members.map(m => {
+              const has = projectMemberIds.includes(m.id)
+              return (
+                <button
+                  key={m.id}
+                  onClick={() => toggleProjectMember(m.id)}
+                  className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted transition-colors text-left"
+                >
+                  <MemberAvatar member={m} size="xs" />
+                  <span className="flex-1 text-sm">{m.name}</span>
+                  {has && <Check className="size-4 text-primary" />}
+                </button>
+              )
+            })}
+          </div>
+          <p className="text-xs text-muted-foreground">Quem tiver o check vê e edita as tarefas deste projeto.</p>
         </DialogContent>
       </Dialog>
     </>

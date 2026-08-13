@@ -6,8 +6,9 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useApp } from "@/context/AppContext"
-import type { Status, Member } from "@/types/task"
-import { LayoutDashboard, CheckSquare, FolderKanban, StickyNote, User, Building2, LayoutList, PanelLeftClose, PanelLeftOpen, Users, MicVocal, Inbox, ChevronsUpDown } from "lucide-react"
+import { useAuth } from "@/context/AuthContext"
+import type { Status } from "@/types/task"
+import { LayoutDashboard, CheckSquare, FolderKanban, StickyNote, User, Building2, LayoutList, PanelLeftClose, PanelLeftOpen, Users, Settings, MicVocal, Inbox, ChevronsUpDown, LogOut } from "lucide-react"
 import { ProjectIcon } from "@/components/ProjectIcon"
 import { MemberAvatar } from "@/components/MemberAvatar"
 
@@ -31,20 +32,19 @@ function CollapseButton() {
   )
 }
 
-type Page = "dashboard" | "tasks" | "projects" | "notes" | "collaborators" | "singing" | "inbox"
+type Page = "dashboard" | "tasks" | "projects" | "notes" | "users" | "settings" | "singing" | "inbox"
 
 interface Props {
   page: Page
   onNavigate: (p: Page) => void
   isAdmin: boolean
-  currentMember: Member | null
-  onChangeCurrentMember: (id: string | null) => void
 }
 
 const ACTIVE_STATUSES: Status[] = ["todo", "in-progress", "review"]
 
-export function AppSidebar({ page, onNavigate, isAdmin, currentMember, onChangeCurrentMember }: Props) {
-  const { tasks, projects, members, activeProjectId, setActiveProjectId } = useApp()
+export function AppSidebar({ page, onNavigate, isAdmin }: Props) {
+  const { tasks, projects, activeProjectId, setActiveProjectId } = useApp()
+  const { profile, signOut } = useAuth()
 
   const activeTasks = tasks.filter(t => ACTIVE_STATUSES.includes(t.status)).length
 
@@ -228,20 +228,31 @@ export function AppSidebar({ page, onNavigate, isAdmin, currentMember, onChangeC
         </SidebarGroup>
         <SidebarSeparator />
 
-        <SidebarGroup>
-          <SidebarGroupLabel>Admin</SidebarGroupLabel>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                isActive={page === "collaborators"}
-                onClick={() => { onNavigate("collaborators"); setActiveProjectId(null) }}
-              >
-                <Users />
-                <span>Colaboradores</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarGroup>
+        {isAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Admin</SidebarGroupLabel>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={page === "users"}
+                  onClick={() => { onNavigate("users"); setActiveProjectId(null) }}
+                >
+                  <Users />
+                  <span>Usuários</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={page === "settings"}
+                  onClick={() => { onNavigate("settings"); setActiveProjectId(null) }}
+                >
+                  <Settings />
+                  <span>Configurações</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
       <SidebarFooter>
@@ -250,34 +261,28 @@ export function AppSidebar({ page, onNavigate, isAdmin, currentMember, onChangeC
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button
-              className="w-full h-9 rounded-lg flex items-center gap-2 px-2 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors border border-border group-data-[collapsible=icon]:justify-center"
-              title="Quem é você?"
-            >
-              {currentMember ? (
-                <MemberAvatar member={currentMember} size="xs" />
+            <button className="w-full h-9 rounded-lg flex items-center gap-2 px-2 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors border border-border group-data-[collapsible=icon]:justify-center">
+              {profile ? (
+                <MemberAvatar member={profile} size="xs" />
               ) : (
                 <User className="size-4 shrink-0" />
               )}
               <span className="flex-1 text-left truncate group-data-[collapsible=icon]:hidden">
-                {currentMember ? currentMember.name : "Quem é você?"}
+                {profile?.name}
               </span>
               <ChevronsUpDown className="size-3.5 shrink-0 group-data-[collapsible=icon]:hidden" />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-56">
-            {members.map(m => (
-              <DropdownMenuItem key={m.id} onClick={() => onChangeCurrentMember(m.id)} className="gap-2">
-                <MemberAvatar member={m} size="xs" />
-                <span className="flex-1">{m.name}</span>
-                {currentMember?.id === m.id && <span className="text-primary">✓</span>}
-              </DropdownMenuItem>
-            ))}
-            {currentMember && (
-              <DropdownMenuItem onClick={() => onChangeCurrentMember(null)} className="text-muted-foreground">
-                Sair da identidade
-              </DropdownMenuItem>
-            )}
+            <DropdownMenuItem disabled className="opacity-100">
+              <div className="flex flex-col">
+                <span className="font-medium text-foreground">{profile?.name}</span>
+                <span className="text-xs text-muted-foreground">{profile?.email}</span>
+              </div>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={signOut} className="gap-2 text-muted-foreground">
+              <LogOut className="size-3.5" /> Sair
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
         <CollapseButton />

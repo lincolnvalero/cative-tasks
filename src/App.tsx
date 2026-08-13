@@ -1,12 +1,15 @@
 import { useState, useEffect } from "react"
 import { AppProvider } from "@/context/AppContext"
+import { AuthProvider, useAuth } from "@/context/AuthContext"
+import { LoginPage } from "@/pages/LoginPage"
 import { AppSidebar } from "@/components/AppSidebar"
 import { BottomNav } from "@/components/BottomNav"
 import { DashboardPage } from "@/pages/DashboardPage"
 import { TasksPage } from "@/pages/TasksPage"
 import { ProjectsPage } from "@/pages/ProjectsPage"
 import { NotesPage } from "@/pages/NotesPage"
-import { CollaboratorsPage } from "@/pages/CollaboratorsPage"
+import { UsersPage } from "@/pages/UsersPage"
+import { SettingsPage } from "@/pages/SettingsPage"
 import { SingingPage } from "@/pages/SingingPage"
 import { InboxPage } from "@/pages/InboxPage"
 import { JarvisPanel } from "@/components/jarvis/JarvisPanel"
@@ -19,13 +22,12 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useTheme } from "@/components/theme-provider"
 import { useApp } from "@/context/AppContext"
-import { useCurrentMember } from "@/hooks/useCurrentMember"
 import { Toaster, toast } from "sonner"
 import { Sun, Moon, Monitor, Search, Loader2, Bot } from "lucide-react"
 import type { Task } from "@/types/task"
 import { isToday, parseISO } from "date-fns"
 
-type Page = "dashboard" | "tasks" | "projects" | "notes" | "collaborators" | "singing" | "inbox"
+type Page = "dashboard" | "tasks" | "projects" | "notes" | "users" | "settings" | "singing" | "inbox"
 
 function ThemeToggle() {
   const { theme, setTheme } = useTheme()
@@ -38,17 +40,17 @@ function ThemeToggle() {
   )
 }
 
-const ADMIN_ONLY_PAGES: Page[] = ["singing", "inbox"]
+const ADMIN_ONLY_PAGES: Page[] = ["singing", "inbox", "users", "settings"]
 
 function AppInner() {
   const { loading, saving, setActiveProjectId, tasks } = useApp()
-  const { currentMember, setCurrentMemberId, isAdmin } = useCurrentMember()
+  const { isAdmin } = useAuth()
   const [page, setPage] = useState<Page>("dashboard")
   const [detailTask, setDetailTask] = useState<Task | null>(null)
   const [newTaskOpen, setNewTaskOpen] = useState(false)
   const [jarvisOpen, setJarvisOpen] = useState(false)
 
-  const PAGE_LABELS: Record<Page, string> = { dashboard: "Dashboard", tasks: "Tarefas", projects: "Projetos", notes: "Notas", collaborators: "Colaboradores", singing: "Canto", inbox: "Inbox" }
+  const PAGE_LABELS: Record<Page, string> = { dashboard: "Dashboard", tasks: "Tarefas", projects: "Projetos", notes: "Notas", users: "Usuários", settings: "Configurações", singing: "Canto", inbox: "Inbox" }
 
   // Sai de uma página restrita a admin se a identidade atual deixar de ser admin
   useEffect(() => {
@@ -77,13 +79,7 @@ function AppInner() {
 
   return (
     <SidebarProvider>
-      <AppSidebar
-        page={page}
-        onNavigate={setPage}
-        isAdmin={isAdmin}
-        currentMember={currentMember}
-        onChangeCurrentMember={setCurrentMemberId}
-      />
+      <AppSidebar page={page} onNavigate={setPage} isAdmin={isAdmin} />
       <SidebarInset>
         {/* Header */}
         <header className="flex h-12 shrink-0 items-center gap-2 border-b px-3 md:px-4">
@@ -129,7 +125,8 @@ function AppInner() {
           )}
           {!loading && page === "projects" && <ProjectsPage />}
           {!loading && page === "notes" && <NotesPage />}
-          {!loading && page === "collaborators" && <CollaboratorsPage />}
+          {!loading && page === "users" && <UsersPage />}
+          {!loading && page === "settings" && <SettingsPage />}
           {!loading && page === "singing" && <SingingPage />}
           {!loading && page === "inbox" && <InboxPage />}
         </main>
@@ -152,13 +149,33 @@ function AppInner() {
   )
 }
 
-export default function App() {
+function AuthGate() {
+  const { session, loading } = useAuth()
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="size-6 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (!session) return <LoginPage />
+
   return (
     <AppProvider>
+      <AppInner />
+    </AppProvider>
+  )
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
       <TooltipProvider>
-        <AppInner />
+        <AuthGate />
         <Toaster richColors position="bottom-right" />
       </TooltipProvider>
-    </AppProvider>
+    </AuthProvider>
   )
 }

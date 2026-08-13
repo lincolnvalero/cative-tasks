@@ -1,7 +1,7 @@
 import { LayoutDashboard, CheckSquare, FolderKanban, Search, StickyNote, MicVocal } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-type Page = "dashboard" | "tasks" | "projects" | "notes" | "collaborators" | "singing" | "inbox"
+type Page = "dashboard" | "tasks" | "projects" | "notes" | "users" | "settings" | "singing" | "inbox"
 
 interface Props {
   page: Page

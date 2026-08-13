@@ -60,6 +60,7 @@ export interface Project {
   color: string
   emoji: string
   workspace: Workspace
+  createdBy: string | null
 }
 
 export const STATUS_CONFIG: Record<Status, { label: string; color: string; bg: string }> = {
@@ -89,12 +90,6 @@ export const PROJECT_COLORS = [
   "#ef4444", "#8b5cf6", "#14b8a6", "#f97316", "#84cc16",
 ]
 
-export const DEFAULT_PROJECTS: Project[] = [
-  { id: "a1000000-0000-0000-0000-000000000001", name: "Igreja / MJ", color: "#8b5cf6", emoji: "church",  workspace: "personal" },
-  { id: "a1000000-0000-0000-0000-000000000002", name: "Pessoal",     color: "#10b981", emoji: "user",    workspace: "personal" },
-  { id: "a1000000-0000-0000-0000-000000000003", name: "Financeiro",  color: "#f59e0b", emoji: "wallet",  workspace: "personal" },
-  { id: "a1000000-0000-0000-0000-000000000004", name: "Projetos",    color: "#3b82f6", emoji: "folder",  workspace: "personal" },
-]
 
 const task = (overrides: Partial<Task> & Pick<Task, "id" | "title" | "status" | "priority" | "projectId">): Task => ({
   description: "", dueDate: null, tags: [], createdAt: "2026-05-28T10:00:00Z",
