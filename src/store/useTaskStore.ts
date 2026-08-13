@@ -508,30 +508,32 @@ export function useTaskStore() {
     }
   }
 
-  async function updateProject(id: string, patch: Partial<Project>) {
+  async function updateProject(id: string, patch: Partial<Project>): Promise<boolean> {
     try {
       setSaving(true)
       const { error } = await supabase.from("lt_projects").update({ name: patch.name, color: patch.color, emoji: patch.emoji }).eq("id", id)
       if (error) {
         toast.error("Erro ao atualizar projeto")
-        return
+        return false
       }
       setProjects(prev => prev.map(p => p.id === id ? { ...p, ...patch } : p))
+      return true
     } finally {
       setSaving(false)
     }
   }
 
-  async function deleteProject(id: string) {
+  async function deleteProject(id: string): Promise<boolean> {
     try {
       setSaving(true)
       const { error } = await supabase.from("lt_projects").delete().eq("id", id)
       if (error) {
         toast.error("Erro ao excluir projeto")
-        return
+        return false
       }
       setProjects(prev => prev.filter(p => p.id !== id))
       setTasks(prev => prev.filter(t => t.projectId !== id))
+      return true
     } finally {
       setSaving(false)
     }

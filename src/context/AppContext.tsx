@@ -28,8 +28,8 @@ interface AppContextValue {
   deleteChecklistItem: (taskId: string, itemId: string) => void
   reorderChecklist: (taskId: string, orderedIds: string[]) => Promise<void>
   addProject: (project: Omit<Project, "id">) => Promise<Project | undefined>
-  updateProject: (id: string, patch: Partial<Project>) => void
-  deleteProject: (id: string) => void
+  updateProject: (id: string, patch: Partial<Project>) => Promise<boolean>
+  deleteProject: (id: string) => Promise<boolean>
   addSavedView: (view: Omit<SavedView, "id">) => void
   deleteSavedView: (id: string) => void
   addTaskLink: (taskId: string, title: string, url: string) => void

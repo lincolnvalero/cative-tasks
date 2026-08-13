@@ -33,13 +33,15 @@ export function ProjectsPage() {
     setDialogOpen(true)
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (!form.name.trim()) return
     if (editingProject) {
-      updateProject(editingProject.id, form)
+      const ok = await updateProject(editingProject.id, form)
+      if (!ok) return
       toast.success("Projeto atualizado")
     } else {
-      addProject(form)
+      const project = await addProject(form)
+      if (!project) return
       toast.success("Projeto criado!")
     }
     setDialogOpen(false)
@@ -56,8 +58,8 @@ export function ProjectsPage() {
       variant: "destructive",
     })
     if (ok) {
-      deleteProject(project.id)
-      toast.success("Projeto excluído")
+      const deleted = await deleteProject(project.id)
+      if (deleted) toast.success("Projeto excluído")
     }
   }
 
