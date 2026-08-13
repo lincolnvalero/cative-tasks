@@ -19,7 +19,16 @@ VITE_SUPABASE_URL=https://bplpowejgqukfsqxfhoj.supabase.co
 VITE_SUPABASE_ANON_KEY=<publishable key do projeto>
 ```
 
-> ⚠️ **Pendência conhecida (13/08):** este projeto já tem 8 tabelas provisionadas, mas com o prefixo antigo `ct_` (`ct_tasks`, `ct_projects`, `ct_task_comments`, `ct_task_checklist`, `ct_task_activity`, `ct_task_links`, `ct_saved_views`, `ct_notes`), todas vazias. O código atual espera o prefixo `lt_`. Além disso faltam as tabelas de Colaboradores, Canto (`lt_vocal_*`) e Inbox (`lt_inbox_items`). Nada funciona nesta base até isso ser resolvido — renomear as 8 tabelas existentes e criar as que faltam, via SQL Editor do Supabase (a chave publishable não executa DDL).
+O schema completo (15 tabelas `lt_*`: núcleo de tarefas/projetos, notas, colaboradores, canto e inbox) precisa ser aplicado via SQL Editor do Supabase — a chave publishable não executa DDL (`CREATE TABLE`/`DROP TABLE`), só leitura/escrita normal. Script de referência: `lincoln-general-system-schema.sql` (gerado em 13/08, entregue ao usuário — recria tudo do zero e remove as tabelas antigas `ct_*` que tinham ficado desse projeto).
+
+Tabelas esperadas pelo código, por área:
+- **Núcleo:** `lt_projects`, `lt_tasks`, `lt_task_comments`, `lt_task_checklist`, `lt_task_activity`, `lt_task_links`, `lt_saved_views`
+- **Notas:** `lt_notes`
+- **Colaboradores:** `lt_members`
+- **Canto:** `lt_vocal_videos`, `lt_vocal_references`, `lt_vocal_class_notes`, `lt_vocal_skills`, `lt_vocal_profile`
+- **Inbox (WhatsApp):** `lt_inbox_items`
+
+RLS desabilitada em todas. `lt_tasks` e `lt_inbox_items` precisam estar na publication `supabase_realtime` (os stores escutam mudanças ao vivo via `postgres_changes`).
 
 **Projeto anterior:** `hjaqbyxjjpodiqinksbk` — ficou inacessível (fora do ar / possivelmente pausado) e foi substituído por este.
 
