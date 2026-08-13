@@ -1,12 +1,11 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import { useTaskStore } from "@/store/useTaskStore"
 import { useMembersStore } from "@/store/useMembersStore"
-import type { Task, Project, Status, SavedView, Workspace, Member } from "@/types/task"
+import type { Task, Project, Status, Workspace, Member } from "@/types/task"
 
 interface AppContextValue {
   tasks: Task[]
   projects: Project[]
-  savedViews: SavedView[]
   loading: boolean
   saving: boolean
   activeProjectId: string | null
@@ -30,8 +29,6 @@ interface AppContextValue {
   addProject: (project: Omit<Project, "id">) => Promise<Project | undefined>
   updateProject: (id: string, patch: Partial<Project>) => Promise<boolean>
   deleteProject: (id: string) => Promise<boolean>
-  addSavedView: (view: Omit<SavedView, "id">) => Promise<boolean>
-  deleteSavedView: (id: string) => void
   addTaskLink: (taskId: string, title: string, url: string) => void
   deleteTaskLink: (taskId: string, linkId: string) => void
   duplicateTask: (id: string) => Promise<Task | undefined>

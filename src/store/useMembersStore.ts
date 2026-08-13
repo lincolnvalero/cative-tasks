@@ -63,6 +63,12 @@ export function useMembersStore() {
   }
 
   async function removeMember(id: string): Promise<void> {
+    // Membros padrão (Lincoln/Gustavo/Ingrid) só existem no estado local — nunca
+    // foram salvos no banco, então não há nada pra deletar lá.
+    if (DEFAULT_MEMBERS.some(m => m.id === id)) {
+      setMembers(prev => prev.filter(m => m.id !== id))
+      return
+    }
     const { error } = await supabase.from("lt_members").delete().eq("id", id)
     if (error) {
       toast.error("Erro ao remover colaborador")
@@ -74,6 +80,25 @@ export function useMembersStore() {
   async function updateMember(id: string, patch: Partial<Pick<Member, "name" | "color" | "initials">>): Promise<boolean> {
     const update: typeof patch = { ...patch }
     if (patch.name && !patch.initials) update.initials = toInitials(patch.name)
+
+    // Editar um membro padrão promove ele pra um registro real no banco,
+    // em vez de tentar atualizar uma linha que nunca existiu lá.
+    if (DEFAULT_MEMBERS.some(m => m.id === id)) {
+      const current = members.find(m => m.id === id)
+      const { data, error } = await supabase.from("lt_members").insert({
+        name: update.name ?? current?.name ?? "",
+        color: update.color ?? current?.color ?? MEMBER_COLORS[0],
+        initials: update.initials ?? current?.initials ?? "",
+      }).select().single()
+      if (error || !data) {
+        toast.error("Erro ao atualizar colaborador")
+        return false
+      }
+      const member = mapMember(data)
+      setMembers(prev => prev.map(m => m.id === id ? member : m))
+      return true
+    }
+
     const { error } = await supabase.from("lt_members").update(update).eq("id", id)
     if (error) {
       toast.error("Erro ao atualizar colaborador")

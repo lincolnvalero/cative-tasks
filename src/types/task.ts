@@ -62,17 +62,6 @@ export interface Project {
   workspace: Workspace
 }
 
-export interface SavedView {
-  id: string
-  name: string
-  filters: {
-    status?: Status
-    priority?: Priority
-    projectId?: string
-    search?: string
-  }
-}
-
 export const STATUS_CONFIG: Record<Status, { label: string; color: string; bg: string }> = {
   todo:          { label: "A Fazer",       color: "text-blue-500",   bg: "bg-blue-500/10" },
   "in-progress": { label: "Em Andamento",  color: "text-yellow-500", bg: "bg-yellow-500/10" },
@@ -105,12 +94,6 @@ export const DEFAULT_PROJECTS: Project[] = [
   { id: "a1000000-0000-0000-0000-000000000002", name: "Pessoal",     color: "#10b981", emoji: "user",    workspace: "personal" },
   { id: "a1000000-0000-0000-0000-000000000003", name: "Financeiro",  color: "#f59e0b", emoji: "wallet",  workspace: "personal" },
   { id: "a1000000-0000-0000-0000-000000000004", name: "Projetos",    color: "#3b82f6", emoji: "folder",  workspace: "personal" },
-]
-
-export const DEFAULT_SAVED_VIEWS: SavedView[] = [
-  { id: "v1", name: "Urgente",    filters: { priority: "urgent" } },
-  { id: "v2", name: "Em revisão", filters: { status: "review" } },
-  { id: "v3", name: "Alta prioridade", filters: { priority: "high" } },
 ]
 
 const task = (overrides: Partial<Task> & Pick<Task, "id" | "title" | "status" | "priority" | "projectId">): Task => ({

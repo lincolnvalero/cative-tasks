@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react"
 import { addDays, addWeeks, addMonths, format, parseISO } from "date-fns"
 import { toast } from "sonner"
-import type { Task, Project, Status, Comment, ChecklistItem, ActivityEntry, SavedView, Recurring, TaskLink } from "@/types/task"
-import { DEFAULT_PROJECTS, DEFAULT_SAVED_VIEWS } from "@/types/task"
+import type { Task, Project, Status, Comment, ChecklistItem, ActivityEntry, Recurring, TaskLink } from "@/types/task"
+import { DEFAULT_PROJECTS } from "@/types/task"
 import { supabase } from "@/lib/supabase"
 
 // ── Mappers DB → App ──────────────────────────────────────────────────────────
@@ -61,10 +61,6 @@ function mapTaskLink(row: Record<string, unknown>): TaskLink {
   return { id: row.id as string, title: row.title as string, url: row.url as string }
 }
 
-function mapView(row: Record<string, unknown>): SavedView {
-  return { id: row.id as string, name: row.name as string, filters: (row.filters as SavedView["filters"]) ?? {} }
-}
-
 // ── Recurring helper ──────────────────────────────────────────────────────────
 
 function nextRecurringDate(dateStr: string, recurring: NonNullable<Recurring>): string {
@@ -81,7 +77,6 @@ function nextRecurringDate(dateStr: string, recurring: NonNullable<Recurring>): 
 export function useTaskStore() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [projects, setProjects] = useState<Project[]>([])
-  const [savedViews, setSavedViews] = useState<SavedView[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
@@ -111,7 +106,6 @@ export function useTaskStore() {
           { data: checklistRows },
           { data: activityRows },
           { data: linkRows },
-          { data: viewRows },
         ] = await Promise.all([
           supabase.from("lt_projects").select("*").order("created_at"),
           supabase.from("lt_tasks").select("*").order("created_at", { ascending: false }),
@@ -119,14 +113,10 @@ export function useTaskStore() {
           supabase.from("lt_task_checklist").select("*").order("position").order("created_at"),
           supabase.from("lt_task_activity").select("*").order("created_at"),
           supabase.from("lt_task_links").select("*").order("created_at"),
-          supabase.from("lt_saved_views").select("*").order("created_at"),
         ])
 
         const mappedProjects = (projRows ?? []).map(mapProject)
         setProjects(mappedProjects.length ? mappedProjects : DEFAULT_PROJECTS)
-
-        const mappedViews = (viewRows ?? []).map(mapView)
-        setSavedViews(mappedViews.length ? mappedViews : DEFAULT_SAVED_VIEWS)
 
         const commentsByTask: Record<string, Comment[]> = {}
         const checklistByTask: Record<string, ChecklistItem[]> = {}
@@ -544,43 +534,6 @@ export function useTaskStore() {
     }
   }
 
-  // ── Saved Views ────────────────────────────────────────────────────────────
-
-  async function addSavedView(view: Omit<SavedView, "id">): Promise<boolean> {
-    try {
-      setSaving(true)
-      const { data, error } = await supabase.from("lt_saved_views").insert({ name: view.name, filters: view.filters }).select().single()
-      if (error || !data) {
-        toast.error("Erro ao criar vista")
-        return false
-      }
-      setSavedViews(prev => [...prev, mapView(data)])
-      return true
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  async function deleteSavedView(id: string) {
-    // Default views (v1, v2, v3…) are not stored in Supabase — remove only from local state
-    const isDefault = /^v\d+$/.test(id)
-    if (isDefault) {
-      setSavedViews(prev => prev.filter(v => v.id !== id))
-      return
-    }
-    try {
-      setSaving(true)
-      const { error } = await supabase.from("lt_saved_views").delete().eq("id", id)
-      if (error) {
-        toast.error("Erro ao excluir vista")
-        return
-      }
-      setSavedViews(prev => prev.filter(v => v.id !== id))
-    } finally {
-      setSaving(false)
-    }
-  }
-
   // ── Task Links ─────────────────────────────────────────────────────────────
 
   async function addTaskLink(taskId: string, title: string, url: string) {
@@ -668,13 +621,12 @@ export function useTaskStore() {
   }
 
   return {
-    tasks, projects, savedViews, loading, saving,
+    tasks, projects, loading, saving,
     reorderTasks,
     addTask, updateTask, deleteTask, deleteTasks, updateTasks, moveTask,
     addComment, deleteComment,
     addChecklistItem, toggleChecklistItem, updateChecklistItem, deleteChecklistItem, reorderChecklist,
     addProject, updateProject, deleteProject,
-    addSavedView, deleteSavedView,
     addTaskLink, deleteTaskLink,
     duplicateTask,
   }

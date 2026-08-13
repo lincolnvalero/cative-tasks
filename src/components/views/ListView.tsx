@@ -8,7 +8,7 @@ import {
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { useApp } from "@/context/AppContext"
-import type { Task, Status, Priority, SavedView } from "@/types/task"
+import type { Task, Status, Priority } from "@/types/task"
 import { STATUS_CONFIG, PRIORITY_CONFIG } from "@/types/task"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -18,7 +18,7 @@ import { ChecklistEditor } from "@/components/ChecklistEditor"
 import { ProjectIcon } from "@/components/ProjectIcon"
 import {
   Trash2, Search, Flag, ArrowUpDown,
-  CheckCircle2, Circle, Plus, RefreshCw, Bookmark, X, Check,
+  CheckCircle2, Circle, Plus, RefreshCw, X, Check,
   GripVertical, CalendarDays, Loader2, PanelRightOpen, Copy, Download, Share2,
   MoreHorizontal, ChevronRight, ClipboardCopy, SlidersHorizontal,
 } from "lucide-react"
@@ -655,21 +655,19 @@ function BulkBar({ selected, onClear, onDelete, onChangeStatus, onChangePriority
 type DueDateFilter = null | "overdue" | "this-week" | "next-30"
 interface ListViewProps {
   onOpenTask: (task: Task) => void
-  appliedView?: SavedView | null
   todayFilter?: boolean
   noDueDateFilter?: boolean
   assigneeFilter?: string[]
   dueDateFilter?: DueDateFilter
 }
 
-export function ListView({ onOpenTask, appliedView, todayFilter = false, noDueDateFilter = false, assigneeFilter = [], dueDateFilter = null }: ListViewProps) {
-  const { tasks: allTasks, projects, deleteTasks, updateTasks, activeProjectId, addSavedView, reorderTasks, activeWorkspace } = useApp()
+export function ListView({ onOpenTask, todayFilter = false, noDueDateFilter = false, assigneeFilter = [], dueDateFilter = null }: ListViewProps) {
+  const { tasks: allTasks, projects, deleteTasks, updateTasks, activeProjectId, reorderTasks, activeWorkspace } = useApp()
   const tasks = activeWorkspace === "all" ? allTasks : allTasks.filter(t => t.workspace === activeWorkspace)
   const [newOpen, setNewOpen] = useState(false)
-  const [search, setSearch] = useState(appliedView?.filters.search ?? "")
-  const [filterStatus, setFilterStatus] = useState<string>(appliedView?.filters.status ?? "all")
-  const [filterPriority, setFilterPriority] = useState<string>(appliedView?.filters.priority ?? "all")
-  const [filterProject, setFilterProject] = useState<string>(appliedView?.filters.projectId ?? "all")
+  const [search, setSearch] = useState("")
+  const [filterStatus, setFilterStatus] = useState<string>("all")
+  const [filterPriority, setFilterPriority] = useState<string>("all")
   const [sortKey, setSortKey] = useState<SortKey>("createdAt")
   const [sortAsc, setSortAsc] = useState(false)
   const [selected, setSelected] = useState<string[]>([])
@@ -678,13 +676,11 @@ export function ListView({ onOpenTask, appliedView, todayFilter = false, noDueDa
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
-  const hasFilters = filterStatus !== "all" || filterPriority !== "all" || filterProject !== "all" || search
-  const filterCount = (filterStatus !== "all" ? 1 : 0) + (filterPriority !== "all" ? 1 : 0) + (filterProject !== "all" ? 1 : 0)
+  const filterCount = (filterStatus !== "all" ? 1 : 0) + (filterPriority !== "all" ? 1 : 0)
 
   function clearFieldFilters() {
     setFilterStatus("all")
     setFilterPriority("all")
-    setFilterProject("all")
   }
 
   const filtered = tasks
@@ -713,7 +709,6 @@ export function ListView({ onOpenTask, appliedView, todayFilter = false, noDueDa
       if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false
       if (filterStatus !== "all" && t.status !== filterStatus) return false
       if (filterPriority !== "all" && t.priority !== filterPriority) return false
-      if (filterProject !== "all" && t.projectId !== filterProject) return false
       return true
     })
     .sort((a, b) => {
@@ -759,21 +754,6 @@ export function ListView({ onOpenTask, appliedView, todayFilter = false, noDueDa
     const ok = await updateTasks(selected, { priority })
     setSelected([])
     if (ok) toast.success("Prioridade atualizada")
-  }
-
-  async function handleSaveView() {
-    const name = prompt("Nome para este filtro:")
-    if (!name?.trim()) return
-    const ok = await addSavedView({
-      name: name.trim(),
-      filters: {
-        status: filterStatus !== "all" ? filterStatus as Status : undefined,
-        priority: filterPriority !== "all" ? filterPriority as Priority : undefined,
-        projectId: filterProject !== "all" ? filterProject : undefined,
-        search: search || undefined,
-      },
-    })
-    if (ok) toast.success(`View "${name.trim()}" salva!`)
   }
 
   function SortBtn({ k, label }: { k: SortKey; label: string }) {
@@ -873,27 +853,6 @@ export function ListView({ onOpenTask, appliedView, todayFilter = false, noDueDa
                 </DropdownMenuCheckboxItem>
               ))}
 
-              {!activeProjectId && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLabel>Projeto</DropdownMenuLabel>
-                  <div className="max-h-40 overflow-y-auto">
-                    {projects.map(p => (
-                      <DropdownMenuCheckboxItem
-                        key={p.id}
-                        checked={filterProject === p.id}
-                        onSelect={e => e.preventDefault()}
-                        onCheckedChange={() => setFilterProject(filterProject === p.id ? "all" : p.id)}
-                        className="gap-2"
-                      >
-                        <ProjectIcon iconKey={p.emoji} className="size-3.5 shrink-0" style={{ color: p.color }} />
-                        {p.name}
-                      </DropdownMenuCheckboxItem>
-                    ))}
-                  </div>
-                </>
-              )}
-
               {filterCount > 0 && (
                 <>
                   <DropdownMenuSeparator />
@@ -915,11 +874,6 @@ export function ListView({ onOpenTask, appliedView, todayFilter = false, noDueDa
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {hasFilters && (
-                <DropdownMenuItem onClick={handleSaveView} className="gap-2">
-                  <Bookmark className="size-3.5" /> Salvar como visão
-                </DropdownMenuItem>
-              )}
               <DropdownMenuItem onClick={exportCSV} className="gap-2">
                 <Download className="size-3.5" /> Exportar CSV
               </DropdownMenuItem>
