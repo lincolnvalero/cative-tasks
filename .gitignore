@@ -26,3 +26,6 @@ dist-ssr
 # .vercel — project.json is committed intentionally (not sensitive)
 # .vercel output dir is ignored
 .vercel/output
+
+# Local Netlify CLI state (site link cache, not project source)
+.netlify
