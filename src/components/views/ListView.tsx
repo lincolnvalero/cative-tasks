@@ -20,9 +20,9 @@ import {
   Trash2, Search, Flag, ArrowUpDown,
   CheckCircle2, Circle, Plus, RefreshCw, Bookmark, X, Check,
   GripVertical, CalendarDays, Loader2, PanelRightOpen, Copy, Download, Share2,
-  MoreHorizontal, ChevronRight, ClipboardCopy,
+  MoreHorizontal, ChevronRight, ClipboardCopy, SlidersHorizontal,
 } from "lucide-react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
 import { ChevronDown } from "lucide-react"
 import { isPast, isToday, parseISO, format, isThisWeek, addDays, isBefore } from "date-fns"
 import { MemberAvatar } from "@/components/MemberAvatar"
@@ -679,6 +679,13 @@ export function ListView({ onOpenTask, appliedView, todayFilter = false, noDueDa
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
   const hasFilters = filterStatus !== "all" || filterPriority !== "all" || filterProject !== "all" || search
+  const filterCount = (filterStatus !== "all" ? 1 : 0) + (filterPriority !== "all" ? 1 : 0) + (filterProject !== "all" ? 1 : 0)
+
+  function clearFieldFilters() {
+    setFilterStatus("all")
+    setFilterPriority("all")
+    setFilterProject("all")
+  }
 
   const filtered = tasks
     .filter(t => {
@@ -821,40 +828,106 @@ export function ListView({ onOpenTask, appliedView, todayFilter = false, noDueDa
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
             <Input placeholder="Buscar..." className="pl-8 h-8" value={search} onChange={e => setSearch(e.target.value)} />
           </div>
-          <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="w-32 h-8 text-xs"><SelectValue placeholder="Status" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos status</SelectItem>
-              {Object.entries(STATUS_CONFIG).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={filterPriority} onValueChange={setFilterPriority}>
-            <SelectTrigger className="w-32 h-8 text-xs"><SelectValue placeholder="Prioridade" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas</SelectItem>
-              {Object.entries(PRIORITY_CONFIG).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          {!activeProjectId && (
-            <Select value={filterProject} onValueChange={setFilterProject}>
-              <SelectTrigger className="w-32 h-8 text-xs"><SelectValue placeholder="Projeto" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          )}
-          {hasFilters && (
-            <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs" onClick={handleSaveView}>
-              <Bookmark className="size-3.5" /> Salvar view
-            </Button>
-          )}
-          <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs" onClick={exportCSV}>
-            <Download className="size-3.5" /> CSV
-          </Button>
-          <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs" onClick={copyWhatsApp} title="Copiar lista para WhatsApp">
-            <ClipboardCopy className="size-3.5" /> Copiar
-          </Button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className={cn(
+                "flex items-center gap-1.5 text-xs h-8 px-2.5 rounded-md border transition-colors font-medium shrink-0",
+                filterCount > 0
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "border-border hover:bg-muted text-muted-foreground hover:text-foreground"
+              )}>
+                <SlidersHorizontal className="size-3.5" />
+                Filtros
+                {filterCount > 0 && (
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none bg-white/20 text-white">
+                    {filterCount}
+                  </span>
+                )}
+                <ChevronDown className="size-3" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-60">
+              <DropdownMenuLabel>Status</DropdownMenuLabel>
+              {Object.entries(STATUS_CONFIG).map(([k, v]) => (
+                <DropdownMenuCheckboxItem
+                  key={k}
+                  checked={filterStatus === k}
+                  onSelect={e => e.preventDefault()}
+                  onCheckedChange={() => setFilterStatus(filterStatus === k ? "all" : k)}
+                >
+                  {v.label}
+                </DropdownMenuCheckboxItem>
+              ))}
+
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>Prioridade</DropdownMenuLabel>
+              {Object.entries(PRIORITY_CONFIG).map(([k, v]) => (
+                <DropdownMenuCheckboxItem
+                  key={k}
+                  checked={filterPriority === k}
+                  onSelect={e => e.preventDefault()}
+                  onCheckedChange={() => setFilterPriority(filterPriority === k ? "all" : k)}
+                >
+                  {v.label}
+                </DropdownMenuCheckboxItem>
+              ))}
+
+              {!activeProjectId && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>Projeto</DropdownMenuLabel>
+                  <div className="max-h-40 overflow-y-auto">
+                    {projects.map(p => (
+                      <DropdownMenuCheckboxItem
+                        key={p.id}
+                        checked={filterProject === p.id}
+                        onSelect={e => e.preventDefault()}
+                        onCheckedChange={() => setFilterProject(filterProject === p.id ? "all" : p.id)}
+                        className="gap-2"
+                      >
+                        <ProjectIcon iconKey={p.emoji} className="size-3.5 shrink-0" style={{ color: p.color }} />
+                        {p.name}
+                      </DropdownMenuCheckboxItem>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {filterCount > 0 && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={clearFieldFilters} className="justify-center text-muted-foreground">
+                    Limpar filtros
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="flex items-center justify-center size-8 rounded-md border border-border hover:bg-muted text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                title="Mais ações"
+              >
+                <MoreHorizontal className="size-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {hasFilters && (
+                <DropdownMenuItem onClick={handleSaveView} className="gap-2">
+                  <Bookmark className="size-3.5" /> Salvar como visão
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem onClick={exportCSV} className="gap-2">
+                <Download className="size-3.5" /> Exportar CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={copyWhatsApp} className="gap-2">
+                <ClipboardCopy className="size-3.5" /> Copiar pra WhatsApp
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* Table */}

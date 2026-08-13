@@ -9,8 +9,8 @@ import { TaskDialog } from "@/components/TaskDialog"
 import { ShortcutsDialog } from "@/components/ShortcutsDialog"
 import { useApp } from "@/context/AppContext"
 import type { Task } from "@/types/task"
-import { Plus, Kanban, List, CalendarDays, BarChart3, X, ChevronDown, FolderKanban, Users, Clock, CalendarClock, RotateCcw } from "lucide-react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Plus, Kanban, List, CalendarDays, BarChart3, X, ChevronDown, FolderKanban, Users, Clock, CalendarClock, RotateCcw, SlidersHorizontal } from "lucide-react"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { MemberAvatar } from "@/components/MemberAvatar"
 import { ProjectIcon } from "@/components/ProjectIcon"
 import { cn } from "@/lib/utils"
@@ -23,12 +23,6 @@ interface Props {
 }
 
 type DueDateFilter = null | "overdue" | "this-week" | "next-30"
-
-const DUE_DATE_LABELS: Record<NonNullable<DueDateFilter>, string> = {
-  overdue: "Vencidas",
-  "this-week": "Esta semana",
-  "next-30": "Próx. 30 dias",
-}
 
 export function TasksPage({ onOpenTask, newTaskOpen = false, onNewTaskClose }: Props) {
   const { projects, activeProjectId, setActiveProjectId, savedViews, deleteSavedView, tasks, members } = useApp()
@@ -43,7 +37,6 @@ export function TasksPage({ onOpenTask, newTaskOpen = false, onNewTaskClose }: P
     () => (localStorage.getItem("lincoln-active-tab") as "kanban" | "list" | "calendar" | "workload") || "kanban"
   )
 
-  const activeProject = projects.find(p => p.id === activeProjectId)
   const appliedView = savedViews.find(v => v.id === activeViewId) ?? null
   const noDueDateCount = tasks.filter(t => !t.dueDate && t.status !== "done").length
   const overdueCount = tasks.filter(t =>
@@ -52,6 +45,13 @@ export function TasksPage({ onOpenTask, newTaskOpen = false, onNewTaskClose }: P
   ).length
 
   const hasAnyFilter = todayFilter || noDueDateFilter || !!dueDateFilter || !!activeProjectId || assigneeFilter.length > 0
+
+  // Filters tucked inside the "Filtros" dropdown (everything except the Todas/Hoje/Vencidas quick chips)
+  const advancedFilterCount =
+    (activeProjectId ? 1 : 0) +
+    assigneeFilter.length +
+    (dueDateFilter && dueDateFilter !== "overdue" ? 1 : 0) +
+    (noDueDateFilter ? 1 : 0)
 
   const isNewOpen = newTaskOpen || localNewOpen
   function closeNew() { setLocalNewOpen(false); onNewTaskClose?.() }
@@ -63,6 +63,13 @@ export function TasksPage({ onOpenTask, newTaskOpen = false, onNewTaskClose }: P
     setActiveProjectId(null)
     setAssigneeFilter([])
     setActiveViewId(null)
+  }
+
+  function clearAdvancedFilters() {
+    if (dueDateFilter !== "overdue") setDueDateFilter(null)
+    setNoDueDateFilter(false)
+    setActiveProjectId(null)
+    setAssigneeFilter([])
   }
 
   function handleTabChange(tab: string) {
@@ -107,183 +114,166 @@ export function TasksPage({ onOpenTask, newTaskOpen = false, onNewTaskClose }: P
 
         {/* Filter toolbar */}
         <div className="flex flex-col gap-2">
-          {/* Row 1: quick filters + field filters + clear */}
-          <div className="flex items-center gap-1.5 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
 
-            {/* Quick: Todas */}
-            <FilterChip
-              active={!hasAnyFilter && !activeViewId}
-              onClick={clearAllFilters}
-            >
-              Todas
-            </FilterChip>
-
-            {/* Quick: Hoje */}
-            <FilterChip
-              active={todayFilter}
-              onClick={() => {
-                const next = !todayFilter
-                setTodayFilter(next)
-                setNoDueDateFilter(false)
-                setActiveViewId(null)
-                if (next) handleTabChange("list")
-              }}
-              icon={<CalendarClock className="size-3.5" />}
-            >
-              Hoje
-            </FilterChip>
-
-            {/* Quick: Sem prazo */}
-            {noDueDateCount > 0 && (
-              <FilterChip
-                active={noDueDateFilter}
+            {/* Segmented quick filters: Todas / Hoje / Vencidas */}
+            <div className="inline-flex items-center rounded-lg border border-border overflow-hidden h-7 shrink-0">
+              <button
+                onClick={clearAllFilters}
+                className={cn(
+                  "h-full flex items-center text-xs px-3 font-medium transition-colors",
+                  !hasAnyFilter && !activeViewId
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
+              >
+                Todas
+              </button>
+              <button
                 onClick={() => {
-                  const next = !noDueDateFilter
-                  setNoDueDateFilter(next)
-                  setTodayFilter(false)
+                  const next = !todayFilter
+                  setTodayFilter(next)
+                  setNoDueDateFilter(false)
                   setActiveViewId(null)
                   if (next) handleTabChange("list")
                 }}
-                badge={noDueDateCount}
-              >
-                Sem prazo
-              </FilterChip>
-            )}
-
-            {/* Quick: Vencidas */}
-            {overdueCount > 0 && (
-              <FilterChip
-                active={dueDateFilter === "overdue"}
-                onClick={() => {
-                  setDueDateFilter(dueDateFilter === "overdue" ? null : "overdue")
-                  setActiveViewId(null)
-                }}
-                badge={overdueCount}
-                badgeVariant="danger"
-              >
-                Vencidas
-              </FilterChip>
-            )}
-
-            {/* Separator */}
-            <div className="h-5 w-px bg-border mx-0.5" />
-
-            {/* Field: Prazo */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className={cn(
-                  "flex items-center gap-1.5 text-xs h-7 px-2.5 rounded-md border transition-colors font-medium",
-                  dueDateFilter && dueDateFilter !== "overdue"
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "border-border hover:bg-muted text-muted-foreground hover:text-foreground"
-                )}>
-                  <Clock className="size-3.5" />
-                  {dueDateFilter && dueDateFilter !== "overdue" ? DUE_DATE_LABELS[dueDateFilter] : "Prazo"}
-                  <ChevronDown className="size-3" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                <DropdownMenuItem onClick={() => setDueDateFilter(dueDateFilter === "this-week" ? null : "this-week")}>
-                  <span className="flex-1">Esta semana</span>
-                  {dueDateFilter === "this-week" && <span className="text-primary ml-2">✓</span>}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setDueDateFilter(dueDateFilter === "next-30" ? null : "next-30")}>
-                  <span className="flex-1">Próximos 30 dias</span>
-                  {dueDateFilter === "next-30" && <span className="text-primary ml-2">✓</span>}
-                </DropdownMenuItem>
-                {dueDateFilter && dueDateFilter !== "overdue" && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => setDueDateFilter(null)} className="text-muted-foreground">
-                      Limpar
-                    </DropdownMenuItem>
-                  </>
+                className={cn(
+                  "h-full flex items-center gap-1.5 text-xs px-3 font-medium border-l border-border transition-colors",
+                  todayFilter
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+              >
+                <CalendarClock className="size-3.5" />
+                Hoje
+              </button>
+              {overdueCount > 0 && (
+                <button
+                  onClick={() => {
+                    setDueDateFilter(dueDateFilter === "overdue" ? null : "overdue")
+                    setActiveViewId(null)
+                  }}
+                  className={cn(
+                    "h-full flex items-center gap-1.5 text-xs px-3 font-medium border-l border-border transition-colors",
+                    dueDateFilter === "overdue"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  Vencidas
+                  <span className={cn(
+                    "text-[10px] font-bold px-1.5 rounded-full leading-none",
+                    dueDateFilter === "overdue" ? "bg-white/20 text-white" : "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400"
+                  )}>
+                    {overdueCount}
+                  </span>
+                </button>
+              )}
+            </div>
 
-            {/* Field: Projeto */}
+            {/* Filtros: Projeto, Responsável e Prazo, tudo num só painel */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className={cn(
                   "flex items-center gap-1.5 text-xs h-7 px-2.5 rounded-md border transition-colors font-medium",
-                  activeProjectId
+                  advancedFilterCount > 0
                     ? "bg-primary text-primary-foreground border-primary"
                     : "border-border hover:bg-muted text-muted-foreground hover:text-foreground"
                 )}>
-                  <FolderKanban className="size-3.5" />
-                  {activeProject ? (
-                    <span className="flex items-center gap-1">
-                      <ProjectIcon iconKey={activeProject.emoji} className="size-3" />
-                      {activeProject.name}
+                  <SlidersHorizontal className="size-3.5" />
+                  Filtros
+                  {advancedFilterCount > 0 && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none bg-white/20 text-white">
+                      {advancedFilterCount}
                     </span>
-                  ) : "Projeto"}
+                  )}
                   <ChevronDown className="size-3" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="max-h-64 overflow-y-auto">
-                {projects.map(p => (
-                  <DropdownMenuItem
-                    key={p.id}
-                    onClick={() => setActiveProjectId(activeProjectId === p.id ? null : p.id)}
-                    className="gap-2"
-                  >
-                    <ProjectIcon iconKey={p.emoji} className="size-4 shrink-0" style={{ color: p.color }} />
-                    <span className="flex-1">{p.name}</span>
-                    {activeProjectId === p.id && <span className="text-primary">✓</span>}
-                  </DropdownMenuItem>
-                ))}
-                {activeProjectId && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => setActiveProjectId(null)} className="text-muted-foreground">
-                      Limpar
-                    </DropdownMenuItem>
-                  </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+              <DropdownMenuContent align="start" className="w-64">
+                <DropdownMenuLabel className="flex items-center gap-1.5">
+                  <FolderKanban className="size-3" /> Projeto
+                </DropdownMenuLabel>
+                <div className="max-h-40 overflow-y-auto">
+                  {projects.map(p => (
+                    <DropdownMenuCheckboxItem
+                      key={p.id}
+                      checked={activeProjectId === p.id}
+                      onSelect={e => e.preventDefault()}
+                      onCheckedChange={() => setActiveProjectId(activeProjectId === p.id ? null : p.id)}
+                      className="gap-2"
+                    >
+                      <ProjectIcon iconKey={p.emoji} className="size-3.5 shrink-0" style={{ color: p.color }} />
+                      {p.name}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </div>
 
-            {/* Field: Responsável */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className={cn(
-                  "flex items-center gap-1.5 text-xs h-7 px-2.5 rounded-md border transition-colors font-medium",
-                  assigneeFilter.length > 0
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "border-border hover:bg-muted text-muted-foreground hover:text-foreground"
-                )}>
-                  <Users className="size-3.5" />
-                  {assigneeFilter.length > 0
-                    ? assigneeFilter.length === 1
-                      ? assigneeFilter[0]
-                      : `${assigneeFilter.length} responsáveis`
-                    : "Responsável"}
-                  <ChevronDown className="size-3" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                {members.map(m => {
-                  const active = assigneeFilter.includes(m.name)
-                  return (
-                    <DropdownMenuItem
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="flex items-center gap-1.5">
+                  <Users className="size-3" /> Responsável
+                </DropdownMenuLabel>
+                <div className="max-h-40 overflow-y-auto">
+                  {members.map(m => (
+                    <DropdownMenuCheckboxItem
                       key={m.id}
-                      onClick={() => setAssigneeFilter(prev =>
-                        active ? prev.filter(n => n !== m.name) : [...prev, m.name]
+                      checked={assigneeFilter.includes(m.name)}
+                      onSelect={e => e.preventDefault()}
+                      onCheckedChange={() => setAssigneeFilter(prev =>
+                        prev.includes(m.name) ? prev.filter(n => n !== m.name) : [...prev, m.name]
                       )}
                       className="gap-2"
                     >
                       <MemberAvatar member={m} size="xs" />
-                      <span className="flex-1">{m.name}</span>
-                      {active && <span className="text-primary">✓</span>}
-                    </DropdownMenuItem>
-                  )
-                })}
-                {assigneeFilter.length > 0 && (
+                      {m.name}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </div>
+
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="flex items-center gap-1.5">
+                  <Clock className="size-3" /> Prazo
+                </DropdownMenuLabel>
+                <DropdownMenuCheckboxItem
+                  checked={dueDateFilter === "this-week"}
+                  onSelect={e => e.preventDefault()}
+                  onCheckedChange={() => {
+                    setDueDateFilter(dueDateFilter === "this-week" ? null : "this-week")
+                    setNoDueDateFilter(false)
+                  }}
+                >
+                  Esta semana
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={dueDateFilter === "next-30"}
+                  onSelect={e => e.preventDefault()}
+                  onCheckedChange={() => {
+                    setDueDateFilter(dueDateFilter === "next-30" ? null : "next-30")
+                    setNoDueDateFilter(false)
+                  }}
+                >
+                  Próximos 30 dias
+                </DropdownMenuCheckboxItem>
+                {noDueDateCount > 0 && (
+                  <DropdownMenuCheckboxItem
+                    checked={noDueDateFilter}
+                    onSelect={e => e.preventDefault()}
+                    onCheckedChange={() => {
+                      const next = !noDueDateFilter
+                      setNoDueDateFilter(next)
+                      if (next) { setDueDateFilter(null); setTodayFilter(false) }
+                    }}
+                  >
+                    Sem prazo definido
+                    <span className="ml-auto text-[10px] text-muted-foreground">{noDueDateCount}</span>
+                  </DropdownMenuCheckboxItem>
+                )}
+
+                {advancedFilterCount > 0 && (
                   <>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => setAssigneeFilter([])} className="text-muted-foreground">
-                      Limpar
+                    <DropdownMenuItem onClick={clearAdvancedFilters} className="justify-center text-muted-foreground">
+                      Limpar filtros
                     </DropdownMenuItem>
                   </>
                 )}
@@ -297,40 +287,36 @@ export function TasksPage({ onOpenTask, newTaskOpen = false, onNewTaskClose }: P
                 className="flex items-center gap-1 text-xs h-7 px-2 text-muted-foreground hover:text-foreground transition-colors ml-auto"
               >
                 <RotateCcw className="size-3" />
-                Limpar filtros
+                Limpar tudo
               </button>
             )}
           </div>
 
-          {/* Row 2: saved views (separated, lower prominence) */}
+          {/* Saved views — lightweight, low-prominence row */}
           {savedViews.length > 0 && (
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium mr-0.5">Visões</span>
+            <div className="flex items-center gap-x-3 gap-y-1 flex-wrap">
+              <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Visões</span>
               {savedViews.map(view => (
-                <div key={view.id} className="flex items-center">
+                <span key={view.id} className="inline-flex items-center gap-1 group">
                   <button
                     onClick={() => { setTodayFilter(false); setActiveViewId(activeViewId === view.id ? null : view.id) }}
                     className={cn(
-                      "text-xs px-2.5 h-6 rounded-l border border-r-0 transition-colors",
+                      "text-xs transition-colors",
                       activeViewId === view.id
-                        ? "bg-primary/10 text-primary border-primary/30 font-medium"
-                        : "border-border hover:bg-muted text-muted-foreground"
+                        ? "text-primary font-medium underline underline-offset-4 decoration-primary/50"
+                        : "text-muted-foreground hover:text-foreground"
                     )}
                   >
                     {view.name}
                   </button>
                   <button
                     onClick={() => { deleteSavedView(view.id); if (activeViewId === view.id) setActiveViewId(null) }}
-                    className={cn(
-                      "h-6 px-1.5 rounded-r border transition-colors",
-                      activeViewId === view.id
-                        ? "bg-primary/10 border-primary/30 text-primary hover:bg-primary/20"
-                        : "border-border hover:bg-muted text-muted-foreground hover:text-destructive"
-                    )}
+                    className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
+                    title="Remover visão"
                   >
                     <X className="size-2.5" />
                   </button>
-                </div>
+                </span>
               ))}
             </div>
           )}
@@ -379,43 +365,5 @@ export function TasksPage({ onOpenTask, newTaskOpen = false, onNewTaskClose }: P
       <TaskDialog open={isNewOpen} onClose={closeNew} />
       <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
     </>
-  )
-}
-
-interface FilterChipProps {
-  active: boolean
-  onClick: () => void
-  children: React.ReactNode
-  icon?: React.ReactNode
-  badge?: number
-  badgeVariant?: "default" | "danger"
-}
-
-function FilterChip({ active, onClick, children, icon, badge, badgeVariant = "default" }: FilterChipProps) {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "flex items-center gap-1.5 text-xs h-7 px-2.5 rounded-md border transition-colors font-medium",
-        active
-          ? "bg-primary text-primary-foreground border-primary"
-          : "border-border hover:bg-muted text-muted-foreground hover:text-foreground"
-      )}
-    >
-      {icon}
-      {children}
-      {badge !== undefined && (
-        <span className={cn(
-          "text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none",
-          active
-            ? "bg-white/20 text-white"
-            : badgeVariant === "danger"
-              ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400"
-              : "bg-muted text-muted-foreground"
-        )}>
-          {badge}
-        </span>
-      )}
-    </button>
   )
 }
