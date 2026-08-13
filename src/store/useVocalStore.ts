@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import { toast } from "sonner"
 import { supabase } from "@/lib/supabase"
 import type {
   VocalVideo, VocalReference, ClassNote, VocalSkill, VocalProfile, VocalPlatform, VocalSkillCategory,
@@ -121,7 +122,7 @@ export function useVocalStore() {
       title: data.title, artist: data.artist, style: data.style, platform: data.platform,
       url: data.url, cover_url: data.coverUrl, tags: data.tags, notes: data.notes, mastery: data.mastery,
     }).select().single()
-    if (error || !row) return
+    if (error || !row) { toast.error("Erro ao adicionar vídeo"); return }
     const video = mapVideo(row)
     setVideos(prev => [video, ...prev])
     return video
@@ -139,13 +140,13 @@ export function useVocalStore() {
     if (patch.notes !== undefined) dbPatch.notes = patch.notes
     if (patch.mastery !== undefined) dbPatch.mastery = patch.mastery
     const { error } = await supabase.from("lt_vocal_videos").update(dbPatch).eq("id", id)
-    if (error) return
+    if (error) { toast.error("Erro ao atualizar vídeo"); return }
     setVideos(prev => prev.map(v => v.id === id ? { ...v, ...patch } : v))
   }
 
   async function deleteVideo(id: string) {
     const { error } = await supabase.from("lt_vocal_videos").delete().eq("id", id)
-    if (error) return
+    if (error) { toast.error("Erro ao excluir vídeo"); return }
     setVideos(prev => prev.filter(v => v.id !== id))
   }
 
@@ -155,7 +156,7 @@ export function useVocalStore() {
     const { data: row, error } = await supabase.from("lt_vocal_references").insert({
       technique: data.technique, artist: data.artist, url: data.url, notes: data.notes,
     }).select().single()
-    if (error || !row) return
+    if (error || !row) { toast.error("Erro ao adicionar referência"); return }
     const reference = mapReference(row)
     setReferences(prev => [reference, ...prev])
     return reference
@@ -163,13 +164,13 @@ export function useVocalStore() {
 
   async function updateReference(id: string, patch: Partial<Omit<VocalReference, "id" | "createdAt">>) {
     const { error } = await supabase.from("lt_vocal_references").update(patch).eq("id", id)
-    if (error) return
+    if (error) { toast.error("Erro ao atualizar referência"); return }
     setReferences(prev => prev.map(r => r.id === id ? { ...r, ...patch } : r))
   }
 
   async function deleteReference(id: string) {
     const { error } = await supabase.from("lt_vocal_references").delete().eq("id", id)
-    if (error) return
+    if (error) { toast.error("Erro ao excluir referência"); return }
     setReferences(prev => prev.filter(r => r.id !== id))
   }
 
@@ -179,7 +180,7 @@ export function useVocalStore() {
     const { data: row, error } = await supabase.from("lt_vocal_class_notes").insert({
       week_date: data.weekDate, content: data.content, exercises: data.exercises, songs: data.songs,
     }).select().single()
-    if (error || !row) return
+    if (error || !row) { toast.error("Erro ao adicionar anotação"); return }
     const note = mapClassNote(row)
     setClassNotes(prev => [note, ...prev])
     return note
@@ -192,13 +193,13 @@ export function useVocalStore() {
     if (patch.exercises !== undefined) dbPatch.exercises = patch.exercises
     if (patch.songs !== undefined) dbPatch.songs = patch.songs
     const { error } = await supabase.from("lt_vocal_class_notes").update(dbPatch).eq("id", id)
-    if (error) return
+    if (error) { toast.error("Erro ao atualizar anotação"); return }
     setClassNotes(prev => prev.map(n => n.id === id ? { ...n, ...patch } : n))
   }
 
   async function deleteClassNote(id: string) {
     const { error } = await supabase.from("lt_vocal_class_notes").delete().eq("id", id)
-    if (error) return
+    if (error) { toast.error("Erro ao excluir anotação"); return }
     setClassNotes(prev => prev.filter(n => n.id !== id))
   }
 
@@ -206,13 +207,13 @@ export function useVocalStore() {
 
   async function updateSkillMastery(id: string, mastery: number) {
     const { error } = await supabase.from("lt_vocal_skills").update({ mastery }).eq("id", id)
-    if (error) return
+    if (error) { toast.error("Erro ao atualizar habilidade"); return }
     setSkills(prev => prev.map(s => s.id === id ? { ...s, mastery } : s))
   }
 
   async function updateSkillNotes(id: string, notes: string) {
     const { error } = await supabase.from("lt_vocal_skills").update({ notes }).eq("id", id)
-    if (error) return
+    if (error) { toast.error("Erro ao atualizar habilidade"); return }
     setSkills(prev => prev.map(s => s.id === id ? { ...s, notes } : s))
   }
 
@@ -221,7 +222,7 @@ export function useVocalStore() {
   async function updateVocalRange(vocalRange: string) {
     if (!profile) return
     const { error } = await supabase.from("lt_vocal_profile").update({ vocal_range: vocalRange, updated_at: new Date().toISOString() }).eq("id", profile.id)
-    if (error) return
+    if (error) { toast.error("Erro ao atualizar perfil"); return }
     setProfile(prev => prev ? { ...prev, vocalRange } : prev)
   }
 

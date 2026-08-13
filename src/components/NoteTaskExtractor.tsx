@@ -50,8 +50,9 @@ export function NoteTaskExtractor({ open, onClose, noteTitle, tasks, onTasksChan
     if (!toAdd.length) return
     setAdding(true)
     const workspace = activeWorkspace === "all" ? "cative" : activeWorkspace
+    let addedCount = 0
     for (const task of toAdd) {
-      await addTask({
+      const created = await addTask({
         title: task.text,
         description: `Extraída da nota: "${noteTitle}"`,
         status: "todo",
@@ -64,10 +65,14 @@ export function NoteTaskExtractor({ open, onClose, noteTitle, tasks, onTasksChan
         assignee: null,
         workspace,
       })
+      if (!created) continue
+      addedCount++
       setAdded(prev => new Set([...prev, task.id]))
     }
     setAdding(false)
-    toast.success(`${toAdd.length} tarefa${toAdd.length > 1 ? "s" : ""} adicionada${toAdd.length > 1 ? "s" : ""}!`)
+    if (addedCount > 0) {
+      toast.success(`${addedCount} tarefa${addedCount > 1 ? "s" : ""} adicionada${addedCount > 1 ? "s" : ""}!`)
+    }
   }
 
   return (

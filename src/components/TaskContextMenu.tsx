@@ -3,7 +3,6 @@ import { useApp } from "@/context/AppContext"
 import type { Task } from "@/types/task"
 import { Pencil, Trash2 } from "lucide-react"
 import { showConfirm } from "@/components/ConfirmDialog"
-import { toast } from "sonner"
 
 interface Props {
   task: Task
@@ -22,7 +21,7 @@ export function TaskContextMenu({ task, onEdit, children }: Props) {
       confirmLabel: "Excluir",
       variant: "destructive",
     })
-    if (ok) { deleteTask(task.id); toast.success("Tarefa excluída") }
+    if (ok) deleteTask(task.id)
   }
 
   return (

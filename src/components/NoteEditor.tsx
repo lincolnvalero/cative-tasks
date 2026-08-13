@@ -14,8 +14,8 @@ interface Props {
   note: Note | null
   allTags: string[]
   onClose: () => void
-  onUpdate: (id: string, patch: Partial<Pick<Note, "title" | "content" | "color" | "pinned" | "tags">>) => Promise<void>
-  onDelete: (id: string) => Promise<void>
+  onUpdate: (id: string, patch: Partial<Pick<Note, "title" | "content" | "color" | "pinned" | "tags">>) => Promise<boolean>
+  onDelete: (id: string) => Promise<boolean>
   onTogglePin: (id: string) => Promise<void>
 }
 
@@ -80,7 +80,8 @@ export function NoteEditor({ note, allTags, onClose, onUpdate, onDelete, onToggl
     const ok = await showConfirm({ title: "Excluir esta nota?", description: "Esta ação não pode ser desfeita.", confirmLabel: "Excluir", variant: "destructive" })
     if (!ok) return
     if (saveTimer.current) clearTimeout(saveTimer.current)
-    await onDelete(note.id)
+    const deleted = await onDelete(note.id)
+    if (!deleted) return
     toast.success("Nota excluída")
     onClose()
   }

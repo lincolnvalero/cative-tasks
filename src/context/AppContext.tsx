@@ -15,12 +15,12 @@ interface AppContextValue {
   setActiveWorkspace: (w: Workspace | "all") => void
   addTask: (task: Omit<Task, "id" | "createdAt" | "comments" | "checklist" | "activity" | "links">) => Promise<Task | undefined>
   reorderTasks: (orderedIds: string[]) => Promise<void>
-  updateTask: (id: string, patch: Partial<Task>, activityText?: string) => void
+  updateTask: (id: string, patch: Partial<Task>, activityText?: string) => Promise<boolean>
   deleteTask: (id: string) => void
-  deleteTasks: (ids: string[]) => void
-  updateTasks: (ids: string[], patch: Partial<Task>) => void
-  moveTask: (id: string, status: Status) => void
-  addComment: (taskId: string, text: string) => void
+  deleteTasks: (ids: string[]) => Promise<boolean>
+  updateTasks: (ids: string[], patch: Partial<Task>) => Promise<boolean>
+  moveTask: (id: string, status: Status) => Promise<boolean>
+  addComment: (taskId: string, text: string) => Promise<boolean>
   deleteComment: (taskId: string, commentId: string) => void
   addChecklistItem: (taskId: string, text: string) => void
   toggleChecklistItem: (taskId: string, itemId: string) => void
@@ -30,7 +30,7 @@ interface AppContextValue {
   addProject: (project: Omit<Project, "id">) => Promise<Project | undefined>
   updateProject: (id: string, patch: Partial<Project>) => Promise<boolean>
   deleteProject: (id: string) => Promise<boolean>
-  addSavedView: (view: Omit<SavedView, "id">) => void
+  addSavedView: (view: Omit<SavedView, "id">) => Promise<boolean>
   deleteSavedView: (id: string) => void
   addTaskLink: (taskId: string, title: string, url: string) => void
   deleteTaskLink: (taskId: string, linkId: string) => void
@@ -40,7 +40,7 @@ interface AppContextValue {
   membersLoading: boolean
   addMember: (name: string) => Promise<Member | undefined>
   removeMember: (id: string) => Promise<void>
-  updateMember: (id: string, patch: Partial<Pick<Member, "name" | "color" | "initials">>) => Promise<void>
+  updateMember: (id: string, patch: Partial<Pick<Member, "name" | "color" | "initials">>) => Promise<boolean>
 }
 
 const AppContext = createContext<AppContextValue | null>(null)

@@ -77,10 +77,10 @@ function TaskRow({
     setTimeout(() => titleInputRef.current?.focus(), 30)
   }
 
-  function saveTitle() {
+  async function saveTitle() {
     if (titleValue.trim() && titleValue !== task.title) {
-      updateTask(task.id, { title: titleValue.trim() })
-      toast.success("Título atualizado")
+      const ok = await updateTask(task.id, { title: titleValue.trim() })
+      if (ok) toast.success("Título atualizado")
     }
     setEditingTitle(false)
   }
@@ -99,13 +99,13 @@ function TaskRow({
 
   async function handleDelete() {
     const ok = await showConfirm({ title: `Excluir "${task.title}"?`, description: "Esta ação não pode ser desfeita.", confirmLabel: "Excluir", variant: "destructive" })
-    if (ok) { deleteTask(task.id); toast.success("Tarefa excluída") }
+    if (ok) deleteTask(task.id)
   }
 
   async function handleDuplicate(e: React.MouseEvent) {
     e.stopPropagation()
-    await duplicateTask(task.id)
-    toast.success("Tarefa duplicada!")
+    const duplicated = await duplicateTask(task.id)
+    if (duplicated) toast.success("Tarefa duplicada!")
   }
 
   function handleCopyWhatsApp(e: React.MouseEvent) {
@@ -117,10 +117,10 @@ function TaskRow({
     toast.success("Copiado para a área de transferência!")
   }
 
-  function handleToggleDone(e: React.MouseEvent) {
+  async function handleToggleDone(e: React.MouseEvent) {
     e.stopPropagation()
-    moveTask(task.id, isDone ? "todo" : "done")
-    toast.success(isDone ? "Tarefa reaberta" : "Tarefa concluída!")
+    const ok = await moveTask(task.id, isDone ? "todo" : "done")
+    if (ok) toast.success(isDone ? "Tarefa reaberta" : "Tarefa concluída!")
   }
 
   function handleDueDateChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -244,9 +244,9 @@ function TaskRow({
             {isTaskStale(task) && (
               <div className="size-2 rounded-full bg-amber-500 shrink-0" title="Sem movimentação há 5+ dias" />
             )}
-            <Select value={task.status} onValueChange={v => {
-              moveTask(task.id, v as Status)
-              toast.success(`Status: ${STATUS_CONFIG[v as Status].label}`)
+            <Select value={task.status} onValueChange={async v => {
+              const ok = await moveTask(task.id, v as Status)
+              if (ok) toast.success(`Status: ${STATUS_CONFIG[v as Status].label}`)
             }}>
               <SelectTrigger className={cn("h-7 text-xs border-0 shadow-none focus:ring-0 px-2 flex-1", status.color, status.bg)}>
                 <SelectValue />
@@ -272,9 +272,9 @@ function TaskRow({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="min-w-[140px]">
               {(Object.entries(PRIORITY_CONFIG) as [Priority, typeof PRIORITY_CONFIG[Priority]][]).map(([k, v]) => (
-                <DropdownMenuItem key={k} className={cn("text-xs gap-2", v.color)} onClick={() => {
-                  updateTask(task.id, { priority: k as Priority })
-                  toast.success(`Prioridade: ${v.label}`)
+                <DropdownMenuItem key={k} className={cn("text-xs gap-2", v.color)} onClick={async () => {
+                  const ok = await updateTask(task.id, { priority: k as Priority })
+                  if (ok) toast.success(`Prioridade: ${v.label}`)
                 }}>
                   <Flag className="size-3" />
                   {v.label}
@@ -413,12 +413,13 @@ function InlineAddRow({ activeProjectId, defaultProjectId }: { activeProjectId: 
 
   async function save() {
     if (!title.trim()) { setActive(false); reset(); return }
-    await addTask({
+    const created = await addTask({
       title: title.trim(), description: "", status, priority,
       projectId: activeProjectId ?? projectId,
       dueDate: dueDate || null, tags: [], recurring: null,
       position: tasks.length, assignee, workspace,
     })
+    if (!created) return
     toast.success("Tarefa criada")
     setTitle("")
     inputRef.current?.focus()
@@ -435,15 +436,17 @@ function InlineAddRow({ activeProjectId, defaultProjectId }: { activeProjectId: 
 
     e.preventDefault()
     ;(async () => {
+      let createdCount = 0
       for (let i = 0; i < lines.length; i++) {
-        await addTask({
+        const created = await addTask({
           title: lines[i], description: "", status, priority,
           projectId: activeProjectId ?? projectId,
           dueDate: dueDate || null, tags: [], recurring: null,
           position: tasks.length + i, assignee, workspace,
         })
+        if (created) createdCount++
       }
-      toast.success(`${lines.length} tarefas criadas!`)
+      if (createdCount > 0) toast.success(`${createdCount} tarefa${createdCount > 1 ? "s" : ""} criada${createdCount > 1 ? "s" : ""}!`)
       reset(); setActive(false)
     })()
   }
@@ -732,23 +735,29 @@ export function ListView({ onOpenTask, appliedView, todayFilter = false, noDueDa
   async function handleBulkDelete() {
     const ok = await showConfirm({ title: `Excluir ${selected.length} tarefas?`, description: "Esta ação não pode ser desfeita.", confirmLabel: "Excluir todas", variant: "destructive" })
     if (ok) {
-      deleteTasks(selected); setSelected([])
-      toast.success(`${selected.length} tarefas excluídas`)
+      const count = selected.length
+      const deleted = await deleteTasks(selected)
+      setSelected([])
+      if (deleted) toast.success(`${count} tarefas excluídas`)
     }
   }
 
-  function handleBulkStatus(status: Status) {
-    updateTasks(selected, { status }); toast.success("Status atualizado"); setSelected([])
+  async function handleBulkStatus(status: Status) {
+    const ok = await updateTasks(selected, { status })
+    setSelected([])
+    if (ok) toast.success("Status atualizado")
   }
 
-  function handleBulkPriority(priority: Priority) {
-    updateTasks(selected, { priority }); toast.success("Prioridade atualizada"); setSelected([])
+  async function handleBulkPriority(priority: Priority) {
+    const ok = await updateTasks(selected, { priority })
+    setSelected([])
+    if (ok) toast.success("Prioridade atualizada")
   }
 
-  function handleSaveView() {
+  async function handleSaveView() {
     const name = prompt("Nome para este filtro:")
     if (!name?.trim()) return
-    addSavedView({
+    const ok = await addSavedView({
       name: name.trim(),
       filters: {
         status: filterStatus !== "all" ? filterStatus as Status : undefined,
@@ -757,7 +766,7 @@ export function ListView({ onOpenTask, appliedView, todayFilter = false, noDueDa
         search: search || undefined,
       },
     })
-    toast.success(`View "${name.trim()}" salva!`)
+    if (ok) toast.success(`View "${name.trim()}" salva!`)
   }
 
   function SortBtn({ k, label }: { k: SortKey; label: string }) {

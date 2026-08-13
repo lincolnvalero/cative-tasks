@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import { toast } from "sonner"
 import { supabase } from "@/lib/supabase"
 import type { InboxItem, InboxPlatform, InboxStatus, InboxChatMessage } from "@/types/inbox"
 
@@ -54,7 +55,7 @@ export function useInboxStore() {
     if (patch.suggestedProjectId !== undefined) dbPatch.suggested_project_id = patch.suggestedProjectId
     if (patch.chatHistory !== undefined) dbPatch.chat_history = patch.chatHistory
     const { error } = await supabase.from("lt_inbox_items").update(dbPatch).eq("id", id)
-    if (error) return
+    if (error) { toast.error("Erro ao atualizar item do inbox"); return }
     setItems(prev => prev.map(i => i.id === id ? { ...i, ...patch } : i))
   }
 
@@ -67,7 +68,7 @@ export function useInboxStore() {
 
   async function deleteItem(id: string) {
     const { error } = await supabase.from("lt_inbox_items").delete().eq("id", id)
-    if (error) return
+    if (error) { toast.error("Erro ao excluir item do inbox"); return }
     setItems(prev => prev.filter(i => i.id !== id))
   }
 

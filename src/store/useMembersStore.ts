@@ -71,15 +71,16 @@ export function useMembersStore() {
     setMembers(prev => prev.filter(m => m.id !== id))
   }
 
-  async function updateMember(id: string, patch: Partial<Pick<Member, "name" | "color" | "initials">>): Promise<void> {
+  async function updateMember(id: string, patch: Partial<Pick<Member, "name" | "color" | "initials">>): Promise<boolean> {
     const update: typeof patch = { ...patch }
     if (patch.name && !patch.initials) update.initials = toInitials(patch.name)
     const { error } = await supabase.from("lt_members").update(update).eq("id", id)
     if (error) {
       toast.error("Erro ao atualizar colaborador")
-      return
+      return false
     }
     setMembers(prev => prev.map(m => m.id === id ? { ...m, ...update } : m))
+    return true
   }
 
   return { members, loading, fetchMembers, addMember, removeMember, updateMember }

@@ -60,8 +60,8 @@ function TaskDetailContent({ task, onClose }: { task: Task; onClose: () => void 
     if (!name) return
     const m = await addMember(name)
     if (m) {
-      updateTask(task.id, { assignee: m.name }, `Responsável: ${m.name}`)
-      toast.success(`${m.name} adicionado`)
+      const ok = await updateTask(task.id, { assignee: m.name }, `Responsável: ${m.name}`)
+      if (ok) toast.success(`${m.name} adicionado`)
     } else {
       toast.error("Já existe um membro com esse nome")
     }
@@ -90,10 +90,10 @@ function TaskDetailContent({ task, onClose }: { task: Task; onClose: () => void 
   const checklistDone = checklist.filter(i => i.done).length
   const checklistPct = checklist.length > 0 ? Math.round((checklistDone / checklist.length) * 100) : 0
 
-  function saveTitle() {
+  async function saveTitle() {
     if (title.trim() && title !== task.title) {
-      updateTask(task.id, { title: title.trim() }, "Título alterado")
-      toast.success("Título atualizado")
+      const ok = await updateTask(task.id, { title: title.trim() }, "Título alterado")
+      if (ok) toast.success("Título atualizado")
     }
   }
 
@@ -101,9 +101,9 @@ function TaskDetailContent({ task, onClose }: { task: Task; onClose: () => void 
     if (description !== task.description) updateTask(task.id, { description })
   }
 
-  function handleStatusChange(status: Status) {
-    moveTask(task.id, status)
-    toast.success(`Status: ${STATUS_CONFIG[status].label}`)
+  async function handleStatusChange(status: Status) {
+    const ok = await moveTask(task.id, status)
+    if (ok) toast.success(`Status: ${STATUS_CONFIG[status].label}`)
   }
 
   function handlePriorityChange(priority: Priority) {
@@ -124,10 +124,11 @@ function TaskDetailContent({ task, onClose }: { task: Task; onClose: () => void 
     updateTask(task.id, { recurring }, recurring ? `Recorrência: ${RECURRING_CONFIG[recurring as NonNullable<Recurring>]}` : "Recorrência removida")
   }
 
-  function handleSendComment() {
+  async function handleSendComment() {
     const text = commentText.trim()
     if (!text) return
-    addComment(task.id, text)
+    const ok = await addComment(task.id, text)
+    if (!ok) return
     setCommentText("")
     toast.success("Comentário adicionado")
   }
@@ -148,14 +149,13 @@ function TaskDetailContent({ task, onClose }: { task: Task; onClose: () => void 
     })
     if (ok) {
       deleteTask(task.id)
-      toast.success("Tarefa excluída")
       onClose()
     }
   }
 
   async function handleDuplicate() {
-    await duplicateTask(task.id)
-    toast.success("Tarefa duplicada!")
+    const duplicated = await duplicateTask(task.id)
+    if (duplicated) toast.success("Tarefa duplicada!")
   }
 
   function handleAddLink() {

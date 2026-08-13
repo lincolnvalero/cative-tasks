@@ -100,8 +100,8 @@ export function NotesPage() {
       variant: "destructive",
     })
     if (!ok) return
-    await deleteNote(id)
-    toast.success("Nota excluída")
+    const deleted = await deleteNote(id)
+    if (deleted) toast.success("Nota excluída")
   }
 
   function NoteCard({ note }: { note: Note }) {

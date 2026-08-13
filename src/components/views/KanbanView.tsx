@@ -29,8 +29,8 @@ function InlineAdd({ status, defaultProjectId }: { status: Status; defaultProjec
   async function save() {
     const t = title.trim()
     if (t) {
-      await addTask({ title: t, description: "", status, priority: "none", projectId: defaultProjectId, dueDate: null, tags: [], recurring: null, position: 0, assignee: null, workspace: "cative" as const })
-      toast.success("Tarefa criada")
+      const created = await addTask({ title: t, description: "", status, priority: "none", projectId: defaultProjectId, dueDate: null, tags: [], recurring: null, position: 0, assignee: null, workspace: "cative" as const })
+      if (created) toast.success("Tarefa criada")
     }
     setTitle("")
     setActive(false)
@@ -41,10 +41,12 @@ function InlineAdd({ status, defaultProjectId }: { status: Status; defaultProjec
     const lines = text.split(/\n/).map(l => l.replace(/^[\-\*\•\·\◦\▪\▸\>\d+[\.\)]\s*]+/, "").trim()).filter(Boolean)
     if (lines.length <= 1) return
     e.preventDefault()
+    let createdCount = 0
     for (const line of lines) {
-      await addTask({ title: line, description: "", status, priority: "none", projectId: defaultProjectId, dueDate: null, tags: [], recurring: null, position: 0, assignee: null, workspace: "cative" as const })
+      const created = await addTask({ title: line, description: "", status, priority: "none", projectId: defaultProjectId, dueDate: null, tags: [], recurring: null, position: 0, assignee: null, workspace: "cative" as const })
+      if (created) createdCount++
     }
-    toast.success(`${lines.length} tarefas criadas!`)
+    if (createdCount > 0) toast.success(`${createdCount} tarefa${createdCount > 1 ? "s" : ""} criada${createdCount > 1 ? "s" : ""}!`)
     setActive(false)
   }
 
@@ -99,10 +101,10 @@ function KanbanCard({ task, onOpenTask }: { task: Task; onOpenTask: (t: Task) =>
     setTimeout(() => titleInputRef.current?.focus(), 30)
   }
 
-  function saveTitle() {
+  async function saveTitle() {
     if (titleValue.trim() && titleValue !== task.title) {
-      updateTask(task.id, { title: titleValue.trim() })
-      toast.success("Título atualizado")
+      const ok = await updateTask(task.id, { title: titleValue.trim() })
+      if (ok) toast.success("Título atualizado")
     }
     setEditingTitle(false)
   }
@@ -115,10 +117,10 @@ function KanbanCard({ task, onOpenTask }: { task: Task; onOpenTask: (t: Task) =>
   const checklistTotal = (task.checklist ?? []).length
   const commentCount = (task.comments ?? []).length
 
-  function toggleDone(e: React.MouseEvent) {
+  async function toggleDone(e: React.MouseEvent) {
     e.stopPropagation()
-    moveTask(task.id, isDone ? "todo" : "done")
-    toast.success(isDone ? "Tarefa reaberta" : "Tarefa concluída!")
+    const ok = await moveTask(task.id, isDone ? "todo" : "done")
+    if (ok) toast.success(isDone ? "Tarefa reaberta" : "Tarefa concluída!")
   }
 
   return (
@@ -289,10 +291,13 @@ export function KanbanView({ onOpenTask, assigneeFilter = [], dueDateFilter = nu
     : afterAssignee
   const defaultProjectId = activeProjectId ?? allProjects[0]?.id ?? ""
 
-  function handleDrop(e: React.DragEvent, status: Status) {
+  async function handleDrop(e: React.DragEvent, status: Status) {
     e.preventDefault()
     const taskId = e.dataTransfer.getData("taskId")
-    if (taskId) { moveTask(taskId, status); toast.success(`Movido para ${STATUS_CONFIG[status].label}`) }
+    if (taskId) {
+      const ok = await moveTask(taskId, status)
+      if (ok) toast.success(`Movido para ${STATUS_CONFIG[status].label}`)
+    }
     setDragOverCol(null)
   }
 

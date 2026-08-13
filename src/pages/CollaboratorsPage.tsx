@@ -66,8 +66,9 @@ function MemberCard({ memberId }: MemberCardProps) {
   async function handleSaveEdit() {
     if (!editName.trim()) return
     setSaving(true)
-    await updateMember(memberId, { name: editName.trim(), color: editColor })
+    const ok = await updateMember(memberId, { name: editName.trim(), color: editColor })
     setSaving(false)
+    if (!ok) return
     setEditing(false)
     toast.success("Colaborador atualizado")
   }
@@ -244,9 +245,10 @@ export function CollaboratorsPage() {
     const name = newName.trim()
     if (!name) return
     setSaving(true)
-    await addMember(name)
-    setNewName("")
+    const member = await addMember(name)
     setSaving(false)
+    if (!member) return
+    setNewName("")
     toast.success("Colaborador adicionado")
   }
 

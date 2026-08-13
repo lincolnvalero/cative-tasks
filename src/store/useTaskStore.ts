@@ -218,7 +218,7 @@ export function useTaskStore() {
     }
   }
 
-  async function updateTask(id: string, patch: Partial<Task>, activityText?: string) {
+  async function updateTask(id: string, patch: Partial<Task>, activityText?: string): Promise<boolean> {
     try {
       setSaving(true)
       const dbPatch: Record<string, unknown> = {}
@@ -236,7 +236,7 @@ export function useTaskStore() {
         const { error } = await supabase.from("lt_tasks").update(dbPatch).eq("id", id)
         if (error) {
           toast.error("Erro ao atualizar tarefa")
-          return
+          return false
         }
       }
 
@@ -245,7 +245,7 @@ export function useTaskStore() {
         const { data, error } = await supabase.from("lt_task_activity").insert({ task_id: id, text: activityText }).select().single()
         if (error) {
           toast.error("Erro ao registrar atividade")
-          return
+          return false
         }
         if (data) newActivityEntry = mapActivity(data)
       }
@@ -256,6 +256,7 @@ export function useTaskStore() {
         if (newActivityEntry) updated.activity = [...(t.activity ?? []), newActivityEntry]
         return updated
       }))
+      return true
     } finally {
       setSaving(false)
     }
@@ -295,21 +296,22 @@ export function useTaskStore() {
     }
   }
 
-  async function deleteTasks(ids: string[]) {
+  async function deleteTasks(ids: string[]): Promise<boolean> {
     try {
       setSaving(true)
       const { error } = await supabase.from("lt_tasks").delete().in("id", ids)
       if (error) {
         toast.error("Erro ao excluir tarefas")
-        return
+        return false
       }
       setTasks(prev => prev.filter(t => !ids.includes(t.id)))
+      return true
     } finally {
       setSaving(false)
     }
   }
 
-  async function updateTasks(ids: string[], patch: Partial<Task>) {
+  async function updateTasks(ids: string[], patch: Partial<Task>): Promise<boolean> {
     try {
       setSaving(true)
       const dbPatch: Record<string, unknown> = {}
@@ -319,23 +321,24 @@ export function useTaskStore() {
         const { error } = await supabase.from("lt_tasks").update(dbPatch).in("id", ids)
         if (error) {
           toast.error("Erro ao atualizar tarefas")
-          return
+          return false
         }
       }
       setTasks(prev => prev.map(t => ids.includes(t.id) ? { ...t, ...patch } : t))
+      return true
     } finally {
       setSaving(false)
     }
   }
 
-  async function moveTask(id: string, status: Status) {
+  async function moveTask(id: string, status: Status): Promise<boolean> {
     try {
       setSaving(true)
       const LABELS: Record<Status, string> = { todo: "A Fazer", "in-progress": "Em Andamento", review: "Revisão", done: "Concluído" }
       const { error } = await supabase.from("lt_tasks").update({ status }).eq("id", id)
       if (error) {
         toast.error("Erro ao atualizar status")
-        return
+        return false
       }
 
       const { data: actRow } = await supabase.from("lt_task_activity").insert({ task_id: id, text: `Status alterado para ${LABELS[status]}` }).select().single()
@@ -369,6 +372,7 @@ export function useTaskStore() {
         }
         return updated
       })
+      return true
     } finally {
       setSaving(false)
     }
@@ -376,16 +380,17 @@ export function useTaskStore() {
 
   // ── Comments ───────────────────────────────────────────────────────────────
 
-  async function addComment(taskId: string, text: string) {
+  async function addComment(taskId: string, text: string): Promise<boolean> {
     try {
       setSaving(true)
       const { data, error } = await supabase.from("lt_task_comments").insert({ task_id: taskId, text }).select().single()
       if (error || !data) {
         toast.error("Erro ao adicionar comentário")
-        return
+        return false
       }
       const comment = mapComment(data)
       setTasks(prev => prev.map(t => t.id === taskId ? { ...t, comments: [...(t.comments ?? []), comment] } : t))
+      return true
     } finally {
       setSaving(false)
     }
@@ -541,15 +546,16 @@ export function useTaskStore() {
 
   // ── Saved Views ────────────────────────────────────────────────────────────
 
-  async function addSavedView(view: Omit<SavedView, "id">) {
+  async function addSavedView(view: Omit<SavedView, "id">): Promise<boolean> {
     try {
       setSaving(true)
       const { data, error } = await supabase.from("lt_saved_views").insert({ name: view.name, filters: view.filters }).select().single()
       if (error || !data) {
         toast.error("Erro ao criar vista")
-        return
+        return false
       }
       setSavedViews(prev => [...prev, mapView(data)])
+      return true
     } finally {
       setSaving(false)
     }

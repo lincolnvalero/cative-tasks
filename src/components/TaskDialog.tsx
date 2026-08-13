@@ -62,7 +62,7 @@ export function TaskDialog({ open, onClose, task, defaultStatus }: TaskDialogPro
     setTagInput("")
   }, [task, open, defaultStatus, projects, activeProjectId])
 
-  function handleSave() {
+  async function handleSave() {
     if (!form.title.trim()) return
     const payload = {
       ...form,
@@ -70,10 +70,12 @@ export function TaskDialog({ open, onClose, task, defaultStatus }: TaskDialogPro
       projectId: form.projectId || (projects[0]?.id ?? ""),
     }
     if (task) {
-      updateTask(task.id, payload)
+      const ok = await updateTask(task.id, payload)
+      if (!ok) return
       toast.success("Tarefa atualizada")
     } else {
-      addTask({ ...payload, recurring: null, position: 0, assignee: form.assignee, workspace: form.workspace })
+      const created = await addTask({ ...payload, recurring: null, position: 0, assignee: form.assignee, workspace: form.workspace })
+      if (!created) return
       toast.success("Tarefa criada!")
     }
     onClose()
