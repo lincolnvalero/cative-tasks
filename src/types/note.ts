@@ -17,6 +17,7 @@ export interface Note {
   color: NoteColor
   pinned: boolean
   tags: string[]
+  taskId: string | null
   createdAt: string
   updatedAt: string
 }

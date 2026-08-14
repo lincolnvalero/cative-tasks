@@ -2,9 +2,11 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from "
 import { useTaskStore } from "@/store/useTaskStore"
 import { useMembersStore } from "@/store/useMembersStore"
 import { useNotificationsStore } from "@/store/useNotificationsStore"
+import { useNotesStore } from "@/store/useNotesStore"
 import { useAuth } from "@/context/AuthContext"
 import type { Task, Project, Status, Member } from "@/types/task"
 import type { AppNotification } from "@/types/notification"
+import type { Note } from "@/types/note"
 
 interface AppContextValue {
   tasks: Task[]
@@ -44,6 +46,14 @@ interface AppContextValue {
   cancelInvite: (recipientId: string, projectId: string) => Promise<boolean>
   acceptInvite: (notification: AppNotification) => Promise<boolean>
   dismissNotification: (id: string) => Promise<boolean>
+  // Notas
+  notes: Note[]
+  notesLoading: boolean
+  noteTags: string[]
+  createNote: (template?: string, initialTags?: string[]) => Promise<Note | undefined>
+  updateNote: (id: string, patch: Partial<Pick<Note, "title" | "content" | "color" | "pinned" | "tags">>) => Promise<boolean>
+  deleteNote: (id: string) => Promise<boolean>
+  toggleNotePin: (id: string) => Promise<void>
 }
 
 const AppContext = createContext<AppContextValue | null>(null)
@@ -53,6 +63,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const membersStore = useMembersStore()
   const { session } = useAuth()
   const notificationsStore = useNotificationsStore(session?.user?.id ?? null)
+  const notesStore = useNotesStore()
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null)
 
   useEffect(() => { membersStore.fetchMembers() }, [])
@@ -65,6 +76,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       membersLoading: membersStore.loading,
       refetchMembers: membersStore.fetchMembers,
       ...notificationsStore,
+      notes: notesStore.notes,
+      notesLoading: notesStore.loading,
+      noteTags: notesStore.allTags,
+      createNote: notesStore.createNote,
+      updateNote: notesStore.updateNote,
+      deleteNote: notesStore.deleteNote,
+      toggleNotePin: notesStore.togglePin,
     }}>
       {children}
     </AppContext.Provider>

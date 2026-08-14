@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react"
-import { useNotesStore } from "@/store/useNotesStore"
+import { useApp } from "@/context/AppContext"
 import { NoteEditor } from "@/components/NoteEditor"
 import { NoteTaskExtractor } from "@/components/NoteTaskExtractor"
 import { NOTE_COLORS, NOTE_TEMPLATES } from "@/types/note"
@@ -53,8 +53,8 @@ function renderPreview(content: string): string {
 }
 
 export function NotesPage() {
-  const { notes, loading, allTags, createNote, updateNote, deleteNote, togglePin } =
-    useNotesStore()
+  const { notes, notesLoading: loading, noteTags: allTags, createNote, updateNote, deleteNote, toggleNotePin: togglePin } =
+    useApp()
   const [editingNote, setEditingNote] = useState<Note | null>(null)
   const [extractorNote, setExtractorNote] = useState<Note | null>(null)
   const [extractedTasks, setExtractedTasks] = useState<ExtractedTask[]>([])

@@ -614,7 +614,7 @@ function BulkBar({ selected, onClear, onDelete, onChangeStatus, onChangePriority
   onChangePriority: (p: Priority) => void
 }) {
   return (
-    <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-card border shadow-lg rounded-xl px-4 py-2.5">
+    <div className="fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2 bg-card border shadow-lg rounded-xl px-4 py-2.5">
       <span className="text-sm font-medium text-muted-foreground mr-1">
         {selected.length} selecionada{selected.length > 1 ? "s" : ""}
       </span>

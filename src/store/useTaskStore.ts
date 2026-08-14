@@ -4,6 +4,16 @@ import { toast } from "sonner"
 import type { Task, Project, Status, Comment, ChecklistItem, ActivityEntry, Recurring, TaskLink } from "@/types/task"
 import { supabase } from "@/lib/supabase"
 
+// Evita que uma chamada de rede travada (ex: sessão presa) prenda a UI pra
+// sempre sem nenhum feedback — depois do tempo limite, vira erro em vez de
+// ficar esperando indefinidamente.
+function withTimeout<T>(promise: PromiseLike<T>, ms = 10000): Promise<T> {
+  return Promise.race([
+    Promise.resolve(promise),
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error("timeout")), ms)),
+  ])
+}
+
 // ── Mappers DB → App ──────────────────────────────────────────────────────────
 
 function mapProject(row: Record<string, unknown>): Project {
@@ -309,13 +319,16 @@ export function useTaskStore() {
   async function deleteTasks(ids: string[]): Promise<boolean> {
     try {
       setSaving(true)
-      const { error } = await supabase.from("lt_tasks").delete().in("id", ids)
+      const { error } = await withTimeout(supabase.from("lt_tasks").delete().in("id", ids))
       if (error) {
         toast.error("Erro ao excluir tarefas")
         return false
       }
       setTasks(prev => prev.filter(t => !ids.includes(t.id)))
       return true
+    } catch {
+      toast.error("Demorou demais pra excluir — tenta de novo")
+      return false
     } finally {
       setSaving(false)
     }
@@ -328,7 +341,7 @@ export function useTaskStore() {
       if (patch.status !== undefined) dbPatch.status = patch.status
       if (patch.priority !== undefined) dbPatch.priority = patch.priority
       if (Object.keys(dbPatch).length > 0) {
-        const { error } = await supabase.from("lt_tasks").update(dbPatch).in("id", ids)
+        const { error } = await withTimeout(supabase.from("lt_tasks").update(dbPatch).in("id", ids))
         if (error) {
           toast.error("Erro ao atualizar tarefas")
           return false
@@ -336,6 +349,9 @@ export function useTaskStore() {
       }
       setTasks(prev => prev.map(t => ids.includes(t.id) ? { ...t, ...patch } : t))
       return true
+    } catch {
+      toast.error("Demorou demais pra atualizar — tenta de novo")
+      return false
     } finally {
       setSaving(false)
     }

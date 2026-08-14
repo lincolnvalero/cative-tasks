@@ -4,7 +4,8 @@ import type { Task } from "@/types/task"
 import { STATUS_CONFIG } from "@/types/task"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { ChevronLeft, ChevronRight } from "lucide-react"
+import { ProjectFilesDialog } from "@/components/ProjectFilesDialog"
+import { ChevronLeft, ChevronRight, StickyNote, Paperclip } from "lucide-react"
 import {
   format, startOfMonth, endOfMonth, startOfWeek, endOfWeek,
   addMonths, subMonths, eachDayOfInterval, isSameMonth,
@@ -18,8 +19,9 @@ interface CalendarViewProps {
 }
 
 export function CalendarView({ onOpenTask }: CalendarViewProps) {
-  const { tasks, activeProjectId } = useApp()
+  const { tasks, projects, notes, activeProjectId } = useApp()
   const [currentMonth, setCurrentMonth] = useState(new Date())
+  const [filesTask, setFilesTask] = useState<Task | null>(null)
 
   const monthStart = startOfMonth(currentMonth)
   const monthEnd = endOfMonth(currentMonth)
@@ -94,24 +96,44 @@ export function CalendarView({ onOpenTask }: CalendarViewProps) {
                   <div className="flex-1 overflow-y-auto px-1 pb-1 flex flex-col gap-0.5">
                     {dayTasks.slice(0, 2).map(task => {
                       const status = STATUS_CONFIG[task.status]
+                      const hasNote = notes.some(n => n.taskId === task.id)
                       return (
-                        <Tooltip key={task.id}>
-                          <TooltipTrigger asChild>
-                            <button
-                              className={cn(
-                                "text-left text-xs px-1.5 py-0.5 rounded w-full transition-opacity hover:opacity-80 leading-snug truncate",
-                                status.bg, status.color
-                              )}
-                              onClick={() => onOpenTask(task)}
-                            >
-                              {task.title}
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent side="right" className="text-xs">
-                            <div className="font-medium">{task.title}</div>
-                            <div className="text-muted-foreground">{status.label}</div>
-                          </TooltipContent>
-                        </Tooltip>
+                        <div key={task.id} className="flex items-center gap-0.5">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                className={cn(
+                                  "flex-1 min-w-0 text-left text-xs px-1.5 py-0.5 rounded transition-opacity hover:opacity-80 leading-snug truncate",
+                                  status.bg, status.color
+                                )}
+                                onClick={() => onOpenTask(task)}
+                              >
+                                {task.title}
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="right" className="text-xs">
+                              <div className="font-medium">{task.title}</div>
+                              <div className="text-muted-foreground">{status.label}</div>
+                            </TooltipContent>
+                          </Tooltip>
+                          {hasNote && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="shrink-0 text-amber-500 flex items-center">
+                                  <StickyNote className="size-3" />
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="right" className="text-xs">Tem nota vinculada</TooltipContent>
+                            </Tooltip>
+                          )}
+                          <button
+                            onClick={e => { e.stopPropagation(); setFilesTask(task) }}
+                            className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                            title="Anexar arquivo"
+                          >
+                            <Paperclip className="size-3" />
+                          </button>
+                        </div>
                       )
                     })}
                     {dayTasks.length > 2 && (
@@ -127,6 +149,12 @@ export function CalendarView({ onOpenTask }: CalendarViewProps) {
         </div>
       </div>
 
+      <ProjectFilesDialog
+        project={projects.find(p => p.id === filesTask?.projectId) ?? null}
+        taskId={filesTask?.id}
+        taskTitle={filesTask?.title}
+        onClose={() => setFilesTask(null)}
+      />
     </>
   )
 }

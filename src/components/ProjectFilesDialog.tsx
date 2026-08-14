@@ -11,12 +11,16 @@ import { toast } from "sonner"
 interface Props {
   project: Project | null
   onClose: () => void
+  /** Quando informado, restringe a arquivos anexados a essa tarefa específica em vez do projeto inteiro. */
+  taskId?: string | null
+  taskTitle?: string
 }
 
 function mapFile(row: Record<string, unknown>): ProjectFile {
   return {
     id: row.id as string,
     projectId: row.project_id as string,
+    taskId: (row.task_id as string) ?? null,
     name: row.name as string,
     path: row.path as string,
     size: row.size as number,
@@ -34,7 +38,7 @@ function formatSize(bytes: number): string {
 
 const ACCEPTED = ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.png,.jpg,.jpeg,.gif,.zip"
 
-export function ProjectFilesDialog({ project, onClose }: Props) {
+export function ProjectFilesDialog({ project, onClose, taskId, taskTitle }: Props) {
   const { members } = useApp()
   const [files, setFiles] = useState<ProjectFile[]>([])
   const [loading, setLoading] = useState(true)
@@ -44,10 +48,11 @@ export function ProjectFilesDialog({ project, onClose }: Props) {
   useEffect(() => {
     if (!project) return
     setLoading(true)
-    supabase.from("lt_project_files").select("*").eq("project_id", project.id)
-      .order("created_at", { ascending: false })
+    let query = supabase.from("lt_project_files").select("*").eq("project_id", project.id)
+    query = taskId ? query.eq("task_id", taskId) : query.is("task_id", null)
+    query.order("created_at", { ascending: false })
       .then(({ data }) => { setFiles((data ?? []).map(mapFile)); setLoading(false) })
-  }, [project])
+  }, [project, taskId])
 
   async function handleUpload(fileList: FileList | null) {
     if (!project || !fileList || fileList.length === 0) return
@@ -58,7 +63,7 @@ export function ProjectFilesDialog({ project, onClose }: Props) {
       const { error: uploadError } = await supabase.storage.from("project-files").upload(path, file)
       if (uploadError) { toast.error(`Erro ao enviar "${file.name}"`); continue }
       const { data, error } = await supabase.from("lt_project_files").insert({
-        project_id: project.id, name: file.name, path,
+        project_id: project.id, task_id: taskId ?? null, name: file.name, path,
         size: file.size, mime_type: file.type || "application/octet-stream",
         uploaded_by: user?.id ?? null,
       }).select().single()
@@ -91,7 +96,7 @@ export function ProjectFilesDialog({ project, onClose }: Props) {
     <Dialog open={!!project} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Arquivos de "{project?.name}"</DialogTitle>
+          <DialogTitle>{taskId ? `Anexos de "${taskTitle}"` : `Arquivos de "${project?.name}"`}</DialogTitle>
         </DialogHeader>
 
         <input

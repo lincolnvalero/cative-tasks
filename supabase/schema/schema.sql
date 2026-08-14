@@ -127,6 +127,7 @@ create table public.lt_notes (
   color      text not null default 'default',
   pinned     boolean not null default false,
   tags       text[] not null default '{}',
+  task_id    uuid references public.lt_tasks(id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -199,6 +200,7 @@ create table public.lt_vocal_profile (
 create table public.lt_project_files (
   id          uuid primary key default gen_random_uuid(),
   project_id  uuid not null references public.lt_projects(id) on delete cascade,
+  task_id     uuid references public.lt_tasks(id) on delete cascade,
   name        text not null,
   path        text not null,
   size        bigint not null default 0,

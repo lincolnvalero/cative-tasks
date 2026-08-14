@@ -11,6 +11,7 @@ function mapNote(row: Record<string, unknown>): Note {
     color: row.color as NoteColor,
     pinned: row.pinned as boolean,
     tags: (row.tags as string[]) ?? [],
+    taskId: (row.task_id as string) ?? null,
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
   }
