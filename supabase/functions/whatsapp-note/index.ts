@@ -32,7 +32,7 @@
  *   - Funcionalidade A
  *   - Funcionalidade B
  *
- *   /nota #reuniao #cative Pauta 05/06
+ *   /nota #reuniao #equipe Pauta 05/06
  *   1. Alinhamento de metas
  *   2. Review do sprint
  *   (tags começam com #, são extraídas automaticamente)

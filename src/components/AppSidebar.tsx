@@ -51,7 +51,7 @@ export function AppSidebar({ page, onNavigate, isAdmin }: Props) {
       <SidebarHeader>
         <div className="flex flex-col gap-2 px-2 py-1">
           <div className="flex items-center gap-2">
-            <img src="/logo.svg" alt="" className="size-8 rounded-lg shrink-0" />
+            <img src="/logo.jpg" alt="" className="size-8 rounded-lg shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold leading-tight">Tasks System</p>
               <p className="text-xs text-muted-foreground">Gestão de Projetos</p>

@@ -124,7 +124,6 @@ Converse com o usuário pra entender o que ele quer fazer com esse vídeo. Quand
         recurring: null,
         position: 0,
         assignee: null,
-        workspace: "cative",
       }).select().single()
 
       if (taskError || !newTask) {

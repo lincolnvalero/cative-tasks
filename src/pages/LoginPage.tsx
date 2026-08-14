@@ -28,7 +28,7 @@ export function LoginPage() {
       <div className="hidden md:flex flex-col justify-center px-16 bg-muted/30 relative overflow-hidden">
         <div className="relative z-10 flex flex-col gap-6 max-w-md">
           <div className="flex items-center gap-2.5">
-            <img src="/logo.svg" alt="" className="size-10 rounded-xl" />
+            <img src="/logo.jpg" alt="" className="size-10 rounded-xl" />
             <span className="text-2xl font-bold">Tasks System</span>
           </div>
           <h1 className="text-4xl font-bold leading-tight">
@@ -44,7 +44,7 @@ export function LoginPage() {
       <div className="flex items-center justify-center px-6 py-12">
         <form onSubmit={handleSubmit} className="w-full max-w-sm flex flex-col gap-6">
           <div className="md:hidden flex items-center gap-2.5 mb-2">
-            <img src="/logo.svg" alt="" className="size-8 rounded-lg" />
+            <img src="/logo.jpg" alt="" className="size-8 rounded-lg" />
             <span className="text-lg font-bold">Tasks System</span>
           </div>
 

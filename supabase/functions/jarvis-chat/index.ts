@@ -133,7 +133,6 @@ Quando o usuário pedir pra adicionar algo, decida o projeto mais provável pela
         recurring: null,
         position: 0,
         assignee: null,
-        workspace: "cative",
       }).select().single()
 
       if (taskError || !newTask) {
