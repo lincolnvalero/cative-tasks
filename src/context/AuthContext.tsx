@@ -37,11 +37,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session: s } }) => {
+    let settled = false
+    function finishLoading() {
+      if (!settled) { settled = true; setLoading(false) }
+    }
+
+    async function init() {
+      const { data: { session: s } } = await supabase.auth.getSession()
       setSession(s)
       if (s) await loadProfile(s.user.id)
-      setLoading(false)
-    })
+      finishLoading()
+    }
+    init()
+
+    // Blindagem: se a checagem inicial de sessão travar (ex: alguma chamada
+    // de auth presa sem nunca resolver nem dar erro), não deixa o app preso
+    // no spinner pra sempre — depois de 8s segue como se não tivesse sessão,
+    // o usuário só precisa logar de novo.
+    const timeoutId = setTimeout(finishLoading, 8000)
 
     const { data: sub } = supabase.auth.onAuthStateChange(async (_event, s) => {
       setSession(s)
@@ -49,7 +62,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       else setProfile(null)
     })
 
-    return () => sub.subscription.unsubscribe()
+    return () => {
+      clearTimeout(timeoutId)
+      sub.subscription.unsubscribe()
+    }
   }, [])
 
   async function signIn(email: string, password: string) {
@@ -58,7 +74,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function signOut() {
-    await supabase.auth.signOut()
+    // Limpa o estado local (e o token salvo) na hora — não espera o servidor
+    // responder. Se essa chamada de rede travar (ex: sessão presa), o usuário
+    // não fica trancado dentro do app sem conseguir sair.
+    setSession(null)
+    setProfile(null)
+    try {
+      Object.keys(localStorage)
+        .filter(k => k.startsWith("sb-"))
+        .forEach(k => localStorage.removeItem(k))
+    } catch {
+      // localStorage indisponível — segue o baile, o estado em memória já foi limpo
+    }
+    supabase.auth.signOut().catch(() => {})
   }
 
   return (

@@ -21,13 +21,28 @@ export function useNotesStore() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    async function load() {
-      try {
-        const { data } = await supabase.from("lt_notes").select("*").order("pinned", { ascending: false }).order("updated_at", { ascending: false })
-        setNotes((data ?? []).map(mapNote))
-      } finally { setLoading(false) }
+    let settled = false
+    function finish(data?: Record<string, unknown>[] | null) {
+      if (settled) return
+      settled = true
+      if (data) setNotes(data.map(mapNote))
+      setLoading(false)
     }
-    load()
+
+    supabase.from("lt_notes").select("*").order("pinned", { ascending: false }).order("updated_at", { ascending: false })
+      .then(({ data, error }) => {
+        if (error) toast.error("Não consegui carregar as notas")
+        finish(data)
+      })
+
+    // Blindagem: se a busca travar (ex: sessão presa), não deixa a tela
+    // presa no skeleton pra sempre.
+    const timeoutId = setTimeout(() => {
+      if (!settled) toast.error("Demorou demais pra carregar as notas — tenta recarregar a página")
+      finish()
+    }, 10000)
+
+    return () => clearTimeout(timeoutId)
   }, [])
 
   async function createNote(template?: string, initialTags?: string[]): Promise<Note | undefined> {
