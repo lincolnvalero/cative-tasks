@@ -19,7 +19,7 @@ Login real via Supabase Auth (e-mail + senha). **Não existe auto-cadastro** —
 - Senha nunca é visível — só resetável (tela Usuários → "Resetar senha")
 - `lt_notes`, `lt_vocal_*` e `lt_inbox_items` continuam abertas pra qualquer conta logada (não são por projeto)
 
-Migration completa: `lincoln-general-system-schema.sql` (schema base) + a migration de auth entregue ao usuário via chat (cria `profiles`, `lt_project_members`, funções `is_admin()`/`has_project_access()` e as policies de RLS).
+Schema completo (todas as tabelas, RLS, funções `is_admin()`/`has_project_access()`): [`supabase/schema/schema.sql`](supabase/schema/schema.sql) — cole no SQL Editor de um projeto Supabase novo pra recriar tudo do zero.
 
 Duas Edge Functions rodam com a service-role key (não podem ser chamadas do navegador com a chave anônima):
 - `admin-create-user` — cria conta (Auth + profile)
