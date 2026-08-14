@@ -29,7 +29,7 @@ function InlineAdd({ status, defaultProjectId }: { status: Status; defaultProjec
   async function save() {
     const t = title.trim()
     if (t) {
-      const created = await addTask({ title: t, description: "", status, priority: "none", projectId: defaultProjectId, dueDate: null, tags: [], recurring: null, position: 0, assignee: null, workspace: "cative" as const })
+      const created = await addTask({ title: t, description: "", status, priority: "none", projectId: defaultProjectId, dueDate: null, tags: [], recurring: null, position: 0, assignee: null })
       if (created) toast.success("Tarefa criada")
     }
     setTitle("")
@@ -43,7 +43,7 @@ function InlineAdd({ status, defaultProjectId }: { status: Status; defaultProjec
     e.preventDefault()
     let createdCount = 0
     for (const line of lines) {
-      const created = await addTask({ title: line, description: "", status, priority: "none", projectId: defaultProjectId, dueDate: null, tags: [], recurring: null, position: 0, assignee: null, workspace: "cative" as const })
+      const created = await addTask({ title: line, description: "", status, priority: "none", projectId: defaultProjectId, dueDate: null, tags: [], recurring: null, position: 0, assignee: null })
       if (created) createdCount++
     }
     if (createdCount > 0) toast.success(`${createdCount} tarefa${createdCount > 1 ? "s" : ""} criada${createdCount > 1 ? "s" : ""}!`)
@@ -269,12 +269,11 @@ function KanbanCard({ task, onOpenTask }: { task: Task; onOpenTask: (t: Task) =>
 
 // ─── Column ───────────────────────────────────────────────────────────────────
 export function KanbanView({ onOpenTask, assigneeFilter = [], dueDateFilter = null }: KanbanViewProps) {
-  const { tasks, moveTask, activeProjectId, projects: allProjects, activeWorkspace } = useApp()
+  const { tasks, moveTask, activeProjectId, projects: allProjects } = useApp()
   const [newStatus, setNewStatus] = useState<Status | null>(null)
   const [dragOverCol, setDragOverCol] = useState<Status | null>(null)
 
-  const workspaceTasks = activeWorkspace === "all" ? tasks : tasks.filter(t => t.workspace === activeWorkspace)
-  const projectFiltered = activeProjectId ? workspaceTasks.filter(t => t.projectId === activeProjectId) : workspaceTasks
+  const projectFiltered = activeProjectId ? tasks.filter(t => t.projectId === activeProjectId) : tasks
   const afterAssignee = assigneeFilter.length > 0
     ? projectFiltered.filter(t => assigneeFilter.includes(t.assignee ?? ""))
     : projectFiltered

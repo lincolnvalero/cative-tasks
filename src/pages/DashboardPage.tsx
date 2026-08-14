@@ -60,7 +60,7 @@ export function DashboardPage() {
           projectIdMap[lp.id] = existing.id
         } else {
           // Criar no Supabase e mapear
-          const newP = await addProject({ name: lp.name, color: lp.color, emoji: lp.emoji, workspace: "personal" as import("@/types/task").Workspace })
+          const newP = await addProject({ name: lp.name, color: lp.color, emoji: lp.emoji })
           if (newP) projectIdMap[lp.id] = newP.id
         }
       }
@@ -96,7 +96,6 @@ export function DashboardPage() {
             recurring: lt.recurring ?? null,
             position: i,
             assignee: null,
-            workspace: (lt.workspace ?? "cative") as import("@/types/task").Workspace,
           })
 
           if (!newTask) throw new Error(`Falha ao criar "${lt.title}"`)

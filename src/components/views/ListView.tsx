@@ -382,7 +382,7 @@ function TaskRow({
 
 // ─── Inline add row ──────────────────────────────────────────────────────────
 function InlineAddRow({ activeProjectId, defaultProjectId }: { activeProjectId: string | null; defaultProjectId: string }) {
-  const { addTask, tasks, projects, members, activeWorkspace } = useApp()
+  const { addTask, tasks, projects, members } = useApp()
   const [active, setActive] = useState(false)
   const [title, setTitle] = useState("")
   const [status, setStatus] = useState<Status>("todo")
@@ -404,20 +404,13 @@ function InlineAddRow({ activeProjectId, defaultProjectId }: { activeProjectId: 
     setDueDate(""); setAssignee(null)
   }
 
-  const workspace = (() => {
-    const proj = projects.find(p => p.id === (activeProjectId ?? projectId))
-    if (proj?.workspace) return proj.workspace as "cative" | "personal"
-    if (activeWorkspace === "personal") return "personal"
-    return "cative"
-  })()
-
   async function save() {
     if (!title.trim()) { setActive(false); reset(); return }
     const created = await addTask({
       title: title.trim(), description: "", status, priority,
       projectId: activeProjectId ?? projectId,
       dueDate: dueDate || null, tags: [], recurring: null,
-      position: tasks.length, assignee, workspace,
+      position: tasks.length, assignee,
     })
     if (!created) return
     toast.success("Tarefa criada")
@@ -442,7 +435,7 @@ function InlineAddRow({ activeProjectId, defaultProjectId }: { activeProjectId: 
           title: lines[i], description: "", status, priority,
           projectId: activeProjectId ?? projectId,
           dueDate: dueDate || null, tags: [], recurring: null,
-          position: tasks.length + i, assignee, workspace,
+          position: tasks.length + i, assignee,
         })
         if (created) createdCount++
       }
@@ -662,8 +655,7 @@ interface ListViewProps {
 }
 
 export function ListView({ onOpenTask, todayFilter = false, noDueDateFilter = false, assigneeFilter = [], dueDateFilter = null }: ListViewProps) {
-  const { tasks: allTasks, projects, deleteTasks, updateTasks, activeProjectId, reorderTasks, activeWorkspace } = useApp()
-  const tasks = activeWorkspace === "all" ? allTasks : allTasks.filter(t => t.workspace === activeWorkspace)
+  const { tasks, projects, deleteTasks, updateTasks, activeProjectId, reorderTasks } = useApp()
   const [newOpen, setNewOpen] = useState(false)
   const [search, setSearch] = useState("")
   const [filterStatus, setFilterStatus] = useState<string>("all")

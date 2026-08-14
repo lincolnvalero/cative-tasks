@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import { useTaskStore } from "@/store/useTaskStore"
 import { useMembersStore } from "@/store/useMembersStore"
-import type { Task, Project, Status, Workspace, Member } from "@/types/task"
+import type { Task, Project, Status, Member } from "@/types/task"
 
 interface AppContextValue {
   tasks: Task[]
@@ -10,8 +10,6 @@ interface AppContextValue {
   saving: boolean
   activeProjectId: string | null
   setActiveProjectId: (id: string | null) => void
-  activeWorkspace: Workspace | "all"
-  setActiveWorkspace: (w: Workspace | "all") => void
   addTask: (task: Omit<Task, "id" | "createdAt" | "comments" | "checklist" | "activity" | "links">) => Promise<Task | undefined>
   reorderTasks: (orderedIds: string[]) => Promise<void>
   updateTask: (id: string, patch: Partial<Task>, activityText?: string) => Promise<boolean>
@@ -44,20 +42,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const store = useTaskStore()
   const membersStore = useMembersStore()
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null)
-  const [activeWorkspace, setActiveWorkspace] = useState<Workspace | "all">("all")
 
   useEffect(() => { membersStore.fetchMembers() }, [])
-
-  function handleSetWorkspace(w: Workspace | "all") {
-    setActiveWorkspace(w)
-    localStorage.setItem("lincoln-workspace", w)
-  }
 
   return (
     <AppContext.Provider value={{
       ...store,
       activeProjectId, setActiveProjectId,
-      activeWorkspace, setActiveWorkspace: handleSetWorkspace,
       members: membersStore.members,
       membersLoading: membersStore.loading,
       refetchMembers: membersStore.fetchMembers,

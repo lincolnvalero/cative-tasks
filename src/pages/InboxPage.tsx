@@ -28,7 +28,6 @@ export function InboxPage() {
       recurring: null,
       position: 0,
       assignee: null,
-      workspace: "cative",
     })
     if (!newTask) {
       toast.error("Erro ao criar tarefa")

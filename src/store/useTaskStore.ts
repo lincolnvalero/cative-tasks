@@ -12,7 +12,6 @@ function mapProject(row: Record<string, unknown>): Project {
     name: row.name as string,
     color: row.color as string,
     emoji: row.emoji as string,
-    workspace: ((row.workspace as string) ?? "cative") as import("@/types/task").Workspace,
     createdBy: (row.created_by as string) ?? null,
   }
 }
@@ -41,7 +40,6 @@ function mapTask(
     activity,
     links,
     assignee: (row.assignee as string) ?? null,
-    workspace: ((row.workspace as string) ?? "cative") as import("@/types/task").Workspace,
   }
 }
 
@@ -189,7 +187,6 @@ export function useTaskStore() {
         recurring: taskData.recurring || null,
         position: taskData.position ?? 0,
         assignee: taskData.assignee || null,
-        workspace: taskData.workspace ?? "cative",
       }).select().single()
 
       if (error || !data) {
@@ -492,7 +489,7 @@ export function useTaskStore() {
       const { data: { user } } = await supabase.auth.getUser()
       const { data, error } = await supabase.from("lt_projects").insert({
         name: projectData.name, color: projectData.color, emoji: projectData.emoji,
-        workspace: projectData.workspace ?? "cative", created_by: user?.id ?? null,
+        created_by: user?.id ?? null,
       }).select().single()
       if (error || !data) {
         toast.error("Erro ao criar projeto")

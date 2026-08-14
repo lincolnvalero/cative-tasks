@@ -16,7 +16,7 @@ import { Plus, Pencil, Trash2, CheckCircle2, Clock, Users, Check } from "lucide-
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 
-const emptyForm = { name: "", emoji: "target", color: PROJECT_COLORS[0], workspace: "personal" as import("@/types/task").Workspace }
+const emptyForm = { name: "", emoji: "target", color: PROJECT_COLORS[0] }
 
 export function ProjectsPage() {
   const { projects, tasks, members, addProject, updateProject, deleteProject } = useApp()
@@ -56,7 +56,7 @@ export function ProjectsPage() {
 
   function openEdit(project: Project) {
     setEditingProject(project)
-    setForm({ name: project.name, emoji: project.emoji, color: project.color, workspace: project.workspace ?? "personal" })
+    setForm({ name: project.name, emoji: project.emoji, color: project.color })
     setDialogOpen(true)
   }
 

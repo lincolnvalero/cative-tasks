@@ -19,7 +19,7 @@ interface Props {
 }
 
 export function NoteTaskExtractor({ open, onClose, noteTitle, tasks, onTasksChange }: Props) {
-  const { projects, addTask, tasks: existingTasks, activeWorkspace } = useApp()
+  const { projects, addTask, tasks: existingTasks } = useApp()
   const [selectedProject, setSelectedProject] = useState(projects[0]?.id ?? "")
   const [selectedPriority, setSelectedPriority] = useState<Priority>("medium")
   const [adding, setAdding] = useState(false)
@@ -49,7 +49,6 @@ export function NoteTaskExtractor({ open, onClose, noteTitle, tasks, onTasksChan
     const toAdd = tasks.filter(t => t.selected && !added.has(t.id))
     if (!toAdd.length) return
     setAdding(true)
-    const workspace = activeWorkspace === "all" ? "cative" : activeWorkspace
     let addedCount = 0
     for (const task of toAdd) {
       const created = await addTask({
@@ -63,7 +62,6 @@ export function NoteTaskExtractor({ open, onClose, noteTitle, tasks, onTasksChan
         recurring: null,
         position: 0,
         assignee: null,
-        workspace,
       })
       if (!created) continue
       addedCount++

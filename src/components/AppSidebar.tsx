@@ -6,7 +6,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { useApp } from "@/context/AppContext"
 import type { Status } from "@/types/task"
-import { LayoutDashboard, CheckSquare, FolderKanban, StickyNote, User, Building2, LayoutList, ChevronLeft, ChevronRight, Users, Settings, MicVocal, Inbox, CalendarDays } from "lucide-react"
+import { LayoutDashboard, CheckSquare, FolderKanban, StickyNote, LayoutList, ChevronLeft, ChevronRight, Users, Settings, MicVocal, Inbox, CalendarDays } from "lucide-react"
 import { ProjectIcon } from "@/components/ProjectIcon"
 
 function CollapseButton() {
@@ -157,15 +157,7 @@ export function AppSidebar({ page, onNavigate, isAdmin }: Props) {
                 {activeTasks > 0 && <span className="ml-auto text-xs text-muted-foreground">{activeTasks}</span>}
               </SidebarMenuButton>
             </SidebarMenuItem>
-            {/* Pessoal */}
-            {projects.filter(p => p.workspace === "personal").length > 0 && (
-              <div className="px-2 pt-1 pb-0.5">
-                <span className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground/50 uppercase tracking-wider">
-                  <User className="size-2.5" /> Pessoal
-                </span>
-              </div>
-            )}
-            {projects.filter(p => p.workspace === "personal").map(p => {
+            {projects.map(p => {
               const count = tasks.filter(t => t.projectId === p.id && ACTIVE_STATUSES.includes(t.status)).length
               const isActive = activeProjectId === p.id
               return (
@@ -174,50 +166,6 @@ export function AppSidebar({ page, onNavigate, isAdmin }: Props) {
                     <ProjectIcon iconKey={p.emoji} className="size-4 shrink-0" style={{ color: p.color }} />
                     <span className="truncate">{p.name}</span>
                     {count > 0 && <span className="ml-auto text-xs text-muted-foreground">{count}</span>}
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )
-            })}
-
-            {/* Divisor sutil se há projetos dos dois tipos */}
-            {projects.filter(p => p.workspace === "personal").length > 0 &&
-             projects.filter(p => p.workspace === "cative").length > 0 && (
-              <div className="px-2 pt-2 pb-0.5">
-                <span className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground/50 uppercase tracking-wider">
-                  <Building2 className="size-2.5" /> Cative
-                </span>
-              </div>
-            )}
-
-            {/* Cative (ou sem label se só há Cative) */}
-            {projects.filter(p => p.workspace === "personal").length === 0 &&
-             projects.filter(p => p.workspace === "cative").length > 0 && (
-              <div className="px-2 pt-1 pb-0.5">
-                <span className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground/50 uppercase tracking-wider">
-                  <Building2 className="size-2.5" /> Cative
-                </span>
-              </div>
-            )}
-
-            {projects.filter(p => p.workspace === "cative" || !p.workspace).map(p => {
-              const count = tasks.filter(t => t.projectId === p.id && ACTIVE_STATUSES.includes(t.status)).length
-              const isActive = activeProjectId === p.id
-              return (
-                <SidebarMenuItem key={p.id}>
-                  <SidebarMenuButton
-                    isActive={isActive}
-                    onClick={() => handleProjectClick(p.id)}
-                    className="gap-2"
-                  >
-                    <ProjectIcon
-                      iconKey={p.emoji}
-                      className="size-4 shrink-0"
-                      style={{ color: p.color }}
-                    />
-                    <span className="truncate">{p.name}</span>
-                    {count > 0 && (
-                      <span className="ml-auto text-xs text-muted-foreground">{count}</span>
-                    )}
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               )
