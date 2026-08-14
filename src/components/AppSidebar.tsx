@@ -4,30 +4,20 @@ import {
   SidebarHeader, SidebarFooter, SidebarSeparator, useSidebar,
 } from "@/components/ui/sidebar"
 import { Badge } from "@/components/ui/badge"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useApp } from "@/context/AppContext"
-import { useAuth } from "@/context/AuthContext"
 import type { Status } from "@/types/task"
-import { LayoutDashboard, CheckSquare, FolderKanban, StickyNote, User, Building2, LayoutList, PanelLeftClose, PanelLeftOpen, Users, Settings, MicVocal, Inbox, ChevronsUpDown, LogOut } from "lucide-react"
+import { LayoutDashboard, CheckSquare, FolderKanban, StickyNote, User, Building2, LayoutList, ChevronLeft, ChevronRight, Users, Settings, MicVocal, Inbox } from "lucide-react"
 import { ProjectIcon } from "@/components/ProjectIcon"
-import { MemberAvatar } from "@/components/MemberAvatar"
 
 function CollapseButton() {
   const { toggleSidebar, open } = useSidebar()
   return (
     <button
       onClick={toggleSidebar}
-      className="w-full h-9 rounded-lg flex items-center justify-center gap-2 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors border border-border"
+      className="w-full h-9 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors border border-border"
       title={open ? "Recolher menu" : "Expandir menu"}
     >
-      {open ? (
-        <>
-          <PanelLeftClose className="size-4 shrink-0" />
-          <span>Recolher menu</span>
-        </>
-      ) : (
-        <PanelLeftOpen className="size-4 shrink-0" />
-      )}
+      {open ? <ChevronLeft className="size-4 shrink-0" /> : <ChevronRight className="size-4 shrink-0" />}
     </button>
   )
 }
@@ -44,7 +34,6 @@ const ACTIVE_STATUSES: Status[] = ["todo", "in-progress", "review"]
 
 export function AppSidebar({ page, onNavigate, isAdmin }: Props) {
   const { tasks, projects, activeProjectId, setActiveProjectId } = useApp()
-  const { profile, signOut } = useAuth()
 
   const activeTasks = tasks.filter(t => ACTIVE_STATUSES.includes(t.status)).length
 
@@ -259,32 +248,6 @@ export function AppSidebar({ page, onNavigate, isAdmin }: Props) {
         <div className="px-2 py-1 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
           {tasks.filter(t => t.status === "done").length} de {tasks.length} tarefas concluídas
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="w-full h-9 rounded-lg flex items-center gap-2 px-2 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors border border-border group-data-[collapsible=icon]:justify-center">
-              {profile ? (
-                <MemberAvatar member={profile} size="xs" />
-              ) : (
-                <User className="size-4 shrink-0" />
-              )}
-              <span className="flex-1 text-left truncate group-data-[collapsible=icon]:hidden">
-                {profile?.name}
-              </span>
-              <ChevronsUpDown className="size-3.5 shrink-0 group-data-[collapsible=icon]:hidden" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-56">
-            <DropdownMenuItem disabled className="opacity-100">
-              <div className="flex flex-col">
-                <span className="font-medium text-foreground">{profile?.name}</span>
-                <span className="text-xs text-muted-foreground">{profile?.email}</span>
-              </div>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={signOut} className="gap-2 text-muted-foreground">
-              <LogOut className="size-3.5" /> Sair
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
         <CollapseButton />
       </SidebarFooter>
     </Sidebar>

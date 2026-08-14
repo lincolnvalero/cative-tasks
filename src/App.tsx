@@ -18,12 +18,14 @@ import { CommandPalette } from "@/components/CommandPalette"
 import { ConfirmDialogProvider } from "@/components/ConfirmDialog"
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar"
 import { TooltipProvider, Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useTheme } from "@/components/theme-provider"
 import { useApp } from "@/context/AppContext"
+import { MemberAvatar } from "@/components/MemberAvatar"
 import { Toaster, toast } from "sonner"
-import { Sun, Moon, Monitor, Search, Loader2, Bot } from "lucide-react"
+import { Sun, Moon, Monitor, Search, Loader2, Bot, User, ChevronsUpDown, LogOut } from "lucide-react"
 import type { Task } from "@/types/task"
 import { isToday, parseISO } from "date-fns"
 
@@ -37,6 +39,32 @@ function ThemeToggle() {
     <Button variant="ghost" size="icon" className="size-8" onClick={() => setTheme(next[theme])}>
       {icons[theme]}
     </Button>
+  )
+}
+
+function UserMenu() {
+  const { profile, signOut } = useAuth()
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button className="flex items-center gap-1.5 h-8 pl-1 pr-1.5 rounded-lg hover:bg-muted transition-colors">
+          {profile ? <MemberAvatar member={profile} size="xs" /> : <User className="size-4 shrink-0" />}
+          <span className="text-xs font-medium hidden sm:inline max-w-[120px] truncate">{profile?.name}</span>
+          <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuItem disabled className="opacity-100">
+          <div className="flex flex-col">
+            <span className="font-medium text-foreground">{profile?.name}</span>
+            <span className="text-xs text-muted-foreground">{profile?.email}</span>
+          </div>
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={signOut} className="gap-2 text-muted-foreground">
+          <LogOut className="size-3.5" /> Sair
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 
@@ -102,6 +130,7 @@ function AppInner() {
             <Bot className="size-4" />
           </Button>
           <ThemeToggle />
+          <UserMenu />
         </header>
 
         {/* Main — extra bottom padding on mobile for BottomNav */}
