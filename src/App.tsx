@@ -28,7 +28,6 @@ import { MemberAvatar } from "@/components/MemberAvatar"
 import { NotificationBell } from "@/components/NotificationBell"
 import { Toaster, toast } from "sonner"
 import { Sun, Moon, Monitor, Search, Loader2, Bot, User, ChevronsUpDown, LogOut } from "lucide-react"
-import type { Task } from "@/types/task"
 import { isToday, parseISO } from "date-fns"
 
 type Page = "dashboard" | "tasks" | "projects" | "notes" | "calendar" | "users" | "settings" | "singing" | "inbox"
@@ -76,7 +75,8 @@ function AppInner() {
   const { loading, saving, setActiveProjectId, tasks } = useApp()
   const { isAdmin } = useAuth()
   const [page, setPage] = useState<Page>("dashboard")
-  const [detailTask, setDetailTask] = useState<Task | null>(null)
+  const [detailTaskId, setDetailTaskId] = useState<string | null>(null)
+  const detailTask = detailTaskId ? tasks.find(t => t.id === detailTaskId) ?? null : null
   const [newTaskOpen, setNewTaskOpen] = useState(false)
   const [jarvisOpen, setJarvisOpen] = useState(false)
 
@@ -150,14 +150,14 @@ function AppInner() {
           {!loading && page === "dashboard" && <DashboardPage />}
           {!loading && page === "tasks" && (
             <TasksPage
-              onOpenTask={setDetailTask}
+              onOpenTask={t => setDetailTaskId(t.id)}
               newTaskOpen={newTaskOpen}
               onNewTaskClose={() => setNewTaskOpen(false)}
             />
           )}
           {!loading && page === "projects" && <ProjectsPage />}
           {!loading && page === "notes" && <NotesPage />}
-          {!loading && page === "calendar" && <CalendarPage onOpenTask={setDetailTask} />}
+          {!loading && page === "calendar" && <CalendarPage onOpenTask={t => setDetailTaskId(t.id)} />}
           {!loading && page === "users" && <UsersPage />}
           {!loading && page === "settings" && <SettingsPage />}
           {!loading && page === "singing" && <SingingPage />}
@@ -169,10 +169,10 @@ function AppInner() {
       <BottomNav page={page} onNavigate={setPage} onSearch={triggerSearch} isAdmin={isAdmin} />
 
       {/* Global overlays */}
-      <TaskDetailSheet task={detailTask} onClose={() => setDetailTask(null)} />
+      <TaskDetailSheet task={detailTask} onClose={() => setDetailTaskId(null)} />
       <CommandPalette
         onNavigate={setPage}
-        onOpenTask={task => { setPage("tasks"); setDetailTask(task) }}
+        onOpenTask={task => { setPage("tasks"); setDetailTaskId(task.id) }}
         onNewTask={() => { setPage("tasks"); setNewTaskOpen(true) }}
         setActiveProjectId={setActiveProjectId}
       />
