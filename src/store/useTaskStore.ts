@@ -210,7 +210,7 @@ export function useTaskStore() {
   async function addTask(taskData: Omit<Task, "id" | "createdAt" | "comments" | "checklist" | "activity" | "links">) {
     try {
       setSaving(true)
-      const { data, error } = await supabase.from("lt_tasks").insert({
+      const { data, error } = await withTimeout(supabase.from("lt_tasks").insert({
         title: taskData.title,
         description: taskData.description,
         status: taskData.status,
@@ -221,7 +221,7 @@ export function useTaskStore() {
         recurring: taskData.recurring || null,
         position: taskData.position ?? 0,
         assignee: taskData.assignee || null,
-      }).select().single()
+      }).select().single())
 
       if (error || !data) {
         toast.error("Erro ao criar tarefa")
@@ -233,6 +233,9 @@ export function useTaskStore() {
       const newTask = mapTask(data, [], [], actRow ? [mapActivity(actRow)] : [], [])
       setTasks(prev => [newTask, ...prev])
       return newTask
+    } catch {
+      toast.error("Demorou demais pra criar a tarefa — tenta de novo")
+      return undefined
     } finally {
       setSaving(false)
     }
@@ -253,7 +256,7 @@ export function useTaskStore() {
       if (patch.assignee !== undefined) dbPatch.assignee = patch.assignee || null
 
       if (Object.keys(dbPatch).length > 0) {
-        const { error } = await supabase.from("lt_tasks").update(dbPatch).eq("id", id)
+        const { error } = await withTimeout(supabase.from("lt_tasks").update(dbPatch).eq("id", id))
         if (error) {
           toast.error("Erro ao atualizar tarefa")
           return false
@@ -277,6 +280,9 @@ export function useTaskStore() {
         return updated
       }))
       return true
+    } catch {
+      toast.error("Demorou demais pra atualizar a tarefa — tenta de novo")
+      return false
     } finally {
       setSaving(false)
     }
@@ -306,8 +312,12 @@ export function useTaskStore() {
         onDismiss: async () => {
           if (!undone) {
             // Perform actual deletion after 5 seconds
-            const { error } = await supabase.from("lt_tasks").delete().eq("id", id)
-            if (error) toast.error("Erro ao excluir tarefa")
+            try {
+              const { error } = await withTimeout(supabase.from("lt_tasks").delete().eq("id", id))
+              if (error) toast.error("Erro ao excluir tarefa")
+            } catch {
+              toast.error("Demorou demais pra excluir — a tarefa pode ter voltado, confere")
+            }
           }
         },
       })
@@ -361,7 +371,7 @@ export function useTaskStore() {
     try {
       setSaving(true)
       const LABELS: Record<Status, string> = { todo: "A Fazer", "in-progress": "Em Andamento", review: "Revisão", done: "Concluído" }
-      const { error } = await supabase.from("lt_tasks").update({ status }).eq("id", id)
+      const { error } = await withTimeout(supabase.from("lt_tasks").update({ status }).eq("id", id))
       if (error) {
         toast.error("Erro ao atualizar status")
         return false
@@ -399,6 +409,9 @@ export function useTaskStore() {
         return updated
       })
       return true
+    } catch {
+      toast.error("Demorou demais pra atualizar status — tenta de novo")
+      return false
     } finally {
       setSaving(false)
     }
@@ -410,8 +423,8 @@ export function useTaskStore() {
     try {
       setSaving(true)
       const { data: { user } } = await supabase.auth.getUser()
-      const { data, error } = await supabase.from("lt_task_comments")
-        .insert({ task_id: taskId, text, author_id: user?.id ?? null }).select().single()
+      const { data, error } = await withTimeout(supabase.from("lt_task_comments")
+        .insert({ task_id: taskId, text, author_id: user?.id ?? null }).select().single())
       if (error || !data) {
         toast.error("Erro ao adicionar comentário")
         return false
@@ -421,6 +434,9 @@ export function useTaskStore() {
         ? { ...t, comments: t.comments.some(c => c.id === comment.id) ? t.comments : [...(t.comments ?? []), comment] }
         : t))
       return true
+    } catch {
+      toast.error("Demorou demais pra enviar o comentário — tenta de novo")
+      return false
     } finally {
       setSaving(false)
     }
@@ -429,12 +445,14 @@ export function useTaskStore() {
   async function deleteComment(taskId: string, commentId: string) {
     try {
       setSaving(true)
-      const { error } = await supabase.from("lt_task_comments").delete().eq("id", commentId)
+      const { error } = await withTimeout(supabase.from("lt_task_comments").delete().eq("id", commentId))
       if (error) {
         toast.error("Erro ao excluir comentário")
         return
       }
       setTasks(prev => prev.map(t => t.id === taskId ? { ...t, comments: t.comments.filter(c => c.id !== commentId) } : t))
+    } catch {
+      toast.error("Demorou demais pra excluir — tenta de novo")
     } finally {
       setSaving(false)
     }
@@ -446,13 +464,15 @@ export function useTaskStore() {
     try {
       setSaving(true)
       const currentLength = tasks.find(t => t.id === taskId)?.checklist.length ?? 0
-      const { data, error } = await supabase.from("lt_task_checklist").insert({ task_id: taskId, text, done: false, position: currentLength }).select().single()
+      const { data, error } = await withTimeout(supabase.from("lt_task_checklist").insert({ task_id: taskId, text, done: false, position: currentLength }).select().single())
       if (error || !data) {
         toast.error("Erro ao adicionar item")
         return
       }
       const item = mapChecklist(data)
       setTasks(prev => prev.map(t => t.id === taskId ? { ...t, checklist: [...(t.checklist ?? []), item] } : t))
+    } catch {
+      toast.error("Demorou demais — tenta de novo")
     } finally {
       setSaving(false)
     }
@@ -466,7 +486,7 @@ export function useTaskStore() {
       if (!task || !item) return
 
       const newDone = !item.done
-      const { error } = await supabase.from("lt_task_checklist").update({ done: newDone }).eq("id", itemId)
+      const { error } = await withTimeout(supabase.from("lt_task_checklist").update({ done: newDone }).eq("id", itemId))
       if (error) {
         toast.error("Erro ao atualizar item")
         return
@@ -479,6 +499,8 @@ export function useTaskStore() {
       if (allDone && task.status !== "done") {
         await moveTask(taskId, "done")
       }
+    } catch {
+      toast.error("Demorou demais — tenta de novo")
     } finally {
       setSaving(false)
     }
@@ -489,12 +511,14 @@ export function useTaskStore() {
     if (!trimmed) return
     try {
       setSaving(true)
-      const { error } = await supabase.from("lt_task_checklist").update({ text: trimmed }).eq("id", itemId)
+      const { error } = await withTimeout(supabase.from("lt_task_checklist").update({ text: trimmed }).eq("id", itemId))
       if (error) {
         toast.error("Erro ao atualizar item")
         return
       }
       setTasks(prev => prev.map(t => t.id === taskId ? { ...t, checklist: t.checklist.map(i => i.id === itemId ? { ...i, text: trimmed } : i) } : t))
+    } catch {
+      toast.error("Demorou demais — tenta de novo")
     } finally {
       setSaving(false)
     }
@@ -503,12 +527,14 @@ export function useTaskStore() {
   async function deleteChecklistItem(taskId: string, itemId: string) {
     try {
       setSaving(true)
-      const { error } = await supabase.from("lt_task_checklist").delete().eq("id", itemId)
+      const { error } = await withTimeout(supabase.from("lt_task_checklist").delete().eq("id", itemId))
       if (error) {
         toast.error("Erro ao excluir item")
         return
       }
       setTasks(prev => prev.map(t => t.id === taskId ? { ...t, checklist: t.checklist.filter(i => i.id !== itemId) } : t))
+    } catch {
+      toast.error("Demorou demais pra excluir — tenta de novo")
     } finally {
       setSaving(false)
     }
@@ -531,10 +557,10 @@ export function useTaskStore() {
     try {
       setSaving(true)
       const { data: { user } } = await supabase.auth.getUser()
-      const { data, error } = await supabase.from("lt_projects").insert({
+      const { data, error } = await withTimeout(supabase.from("lt_projects").insert({
         name: projectData.name, color: projectData.color, emoji: projectData.emoji,
         created_by: user?.id ?? null,
-      }).select().single()
+      }).select().single())
       if (error || !data) {
         toast.error("Erro ao criar projeto")
         return
@@ -545,6 +571,9 @@ export function useTaskStore() {
       const p = mapProject(data)
       setProjects(prev => [...prev, p])
       return p
+    } catch {
+      toast.error("Demorou demais pra criar o projeto — tenta de novo")
+      return undefined
     } finally {
       setSaving(false)
     }
@@ -558,13 +587,16 @@ export function useTaskStore() {
       if (patch.color !== undefined) dbPatch.color = patch.color
       if (patch.emoji !== undefined) dbPatch.emoji = patch.emoji
       if (patch.suspended !== undefined) dbPatch.suspended = patch.suspended
-      const { error } = await supabase.from("lt_projects").update(dbPatch).eq("id", id)
+      const { error } = await withTimeout(supabase.from("lt_projects").update(dbPatch).eq("id", id))
       if (error) {
         toast.error(patch.suspended !== undefined ? "Só administradores podem suspender/reativar um projeto" : "Erro ao atualizar projeto")
         return false
       }
       setProjects(prev => prev.map(p => p.id === id ? { ...p, ...patch } : p))
       return true
+    } catch {
+      toast.error("Demorou demais pra atualizar o projeto — tenta de novo")
+      return false
     } finally {
       setSaving(false)
     }
@@ -573,7 +605,7 @@ export function useTaskStore() {
   async function deleteProject(id: string): Promise<boolean> {
     try {
       setSaving(true)
-      const { error } = await supabase.from("lt_projects").delete().eq("id", id)
+      const { error } = await withTimeout(supabase.from("lt_projects").delete().eq("id", id))
       if (error) {
         toast.error("Erro ao excluir projeto")
         return false
@@ -581,6 +613,9 @@ export function useTaskStore() {
       setProjects(prev => prev.filter(p => p.id !== id))
       setTasks(prev => prev.filter(t => t.projectId !== id))
       return true
+    } catch {
+      toast.error("Demorou demais pra excluir — tenta de novo")
+      return false
     } finally {
       setSaving(false)
     }
@@ -591,13 +626,15 @@ export function useTaskStore() {
   async function addTaskLink(taskId: string, title: string, url: string) {
     try {
       setSaving(true)
-      const { data, error } = await supabase.from("lt_task_links").insert({ task_id: taskId, title, url }).select().single()
+      const { data, error } = await withTimeout(supabase.from("lt_task_links").insert({ task_id: taskId, title, url }).select().single())
       if (error || !data) {
         toast.error("Erro ao adicionar link")
         return
       }
       const link = mapTaskLink(data)
       setTasks(prev => prev.map(t => t.id === taskId ? { ...t, links: [...(t.links ?? []), link] } : t))
+    } catch {
+      toast.error("Demorou demais — tenta de novo")
     } finally {
       setSaving(false)
     }
@@ -606,12 +643,14 @@ export function useTaskStore() {
   async function deleteTaskLink(taskId: string, linkId: string) {
     try {
       setSaving(true)
-      const { error } = await supabase.from("lt_task_links").delete().eq("id", linkId)
+      const { error } = await withTimeout(supabase.from("lt_task_links").delete().eq("id", linkId))
       if (error) {
         toast.error("Erro ao excluir link")
         return
       }
       setTasks(prev => prev.map(t => t.id === taskId ? { ...t, links: t.links.filter(l => l.id !== linkId) } : t))
+    } catch {
+      toast.error("Demorou demais pra excluir — tenta de novo")
     } finally {
       setSaving(false)
     }
@@ -628,7 +667,7 @@ export function useTaskStore() {
         return
       }
 
-      const { data, error } = await supabase.from("lt_tasks").insert({
+      const { data, error } = await withTimeout(supabase.from("lt_tasks").insert({
         title: `Cópia de ${task.title}`,
         description: task.description,
         status: task.status,
@@ -639,7 +678,7 @@ export function useTaskStore() {
         recurring: task.recurring || null,
         position: 0,
         assignee: task.assignee || null,
-      }).select().single()
+      }).select().single())
 
       if (error || !data) {
         toast.error("Erro ao duplicar tarefa")
@@ -667,6 +706,9 @@ export function useTaskStore() {
       const newTask = mapTask(data, [], task.checklist.map((item) => ({ ...item, done: false })), actRow ? [mapActivity(actRow)] : [], [])
       setTasks(prev => [newTask, ...prev])
       return newTask
+    } catch {
+      toast.error("Demorou demais pra duplicar — tenta de novo")
+      return undefined
     } finally {
       setSaving(false)
     }

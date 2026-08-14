@@ -20,7 +20,7 @@ import {
   Trash2, Search, Flag, ArrowUpDown,
   CheckCircle2, Circle, Plus, RefreshCw, X, Check,
   GripVertical, CalendarDays, Loader2, PanelRightOpen, Copy, Download, Share2,
-  MoreHorizontal, ChevronRight, ClipboardCopy, SlidersHorizontal,
+  MoreHorizontal, ChevronRight, ClipboardCopy, SlidersHorizontal, User,
 } from "lucide-react"
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
 import { ChevronDown } from "lucide-react"
@@ -239,7 +239,7 @@ function TaskRow({
           </div>
         </td>
         {/* Status — inline select with stale indicator */}
-        <td className="px-2 py-2 hidden sm:table-cell w-36" onClick={e => e.stopPropagation()}>
+        <td className="px-1.5 py-2 hidden sm:table-cell w-28" onClick={e => e.stopPropagation()}>
           <div className="flex items-center gap-1">
             {isTaskStale(task) && (
               <div className="size-2 rounded-full bg-amber-500 shrink-0" title="Sem movimentação há 5+ dias" />
@@ -248,7 +248,7 @@ function TaskRow({
               const ok = await moveTask(task.id, v as Status)
               if (ok) toast.success(`Status: ${STATUS_CONFIG[v as Status].label}`)
             }}>
-              <SelectTrigger className={cn("h-7 text-xs border-0 shadow-none focus:ring-0 px-2 flex-1", status.color, status.bg)}>
+              <SelectTrigger className={cn("h-7 text-xs border-0 shadow-none focus:ring-0 px-1.5 flex-1", status.color, status.bg)}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -260,7 +260,7 @@ function TaskRow({
           </div>
         </td>
         {/* Priority — icon only */}
-        <td className="px-2 py-2 hidden sm:table-cell w-10" onClick={e => e.stopPropagation()}>
+        <td className="px-1 py-2 hidden sm:table-cell w-8" onClick={e => e.stopPropagation()}>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
@@ -285,16 +285,16 @@ function TaskRow({
           </DropdownMenu>
         </td>
         {/* Project */}
-        <td className="px-2 py-2 hidden md:table-cell w-36">
+        <td className="px-1.5 py-2 hidden md:table-cell w-24">
           {project && (
-            <span className="flex items-center gap-1.5 text-xs max-w-[128px]">
+            <span className="flex items-center gap-1 text-xs max-w-[84px]" title={project.name}>
               <ProjectIcon iconKey={project.emoji} className="size-3.5 shrink-0" style={{ color: project.color }} />
-              <span className="truncate" title={project.name}>{project.name}</span>
+              <span className="truncate">{project.name}</span>
             </span>
           )}
         </td>
         {/* Due date — inline input */}
-        <td className="px-2 py-2 hidden lg:table-cell w-32" onClick={e => e.stopPropagation()}>
+        <td className="px-1.5 py-2 hidden lg:table-cell w-24" onClick={e => e.stopPropagation()}>
           <div className="flex items-center gap-1">
             {savingDate ? (
               <Loader2 className="size-3 shrink-0 animate-spin text-muted-foreground" />
@@ -306,27 +306,26 @@ function TaskRow({
               value={task.dueDate ?? ""}
               onChange={handleDueDateChange}
               className={cn(
-                "text-xs bg-transparent outline-none w-24 cursor-pointer",
+                "text-xs bg-transparent outline-none w-16 cursor-pointer",
                 overdue ? "text-red-500 font-medium" : dueToday ? "text-yellow-600 font-medium" : "text-muted-foreground"
               )}
               title="Data de entrega"
             />
           </div>
         </td>
-        {/* Assignee — inline dropdown */}
-        <td className="px-2 py-2 hidden sm:table-cell w-36" onClick={e => e.stopPropagation()}>
+        {/* Assignee — inline dropdown, ícone apenas */}
+        <td className="px-1 py-2 hidden sm:table-cell w-9" onClick={e => e.stopPropagation()}>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-1.5 text-xs px-1 py-1 rounded hover:bg-muted transition-colors w-full max-w-[128px] group">
+              <button
+                className="flex items-center justify-center w-7 h-7 rounded hover:bg-muted transition-colors mx-auto"
+                title={task.assignee ?? "Sem responsável"}
+              >
                 {task.assignee ? (
-                  <>
-                    {(() => { const m = members.find(m => m.name === task.assignee); return m ? <MemberAvatar member={m} size="xs" /> : null })()}
-                    <span className="truncate flex-1 text-left">{task.assignee}</span>
-                  </>
+                  (() => { const m = members.find(m => m.name === task.assignee); return m ? <MemberAvatar member={m} size="xs" /> : <User className="size-3.5 text-muted-foreground/50" /> })()
                 ) : (
-                  <span className="text-muted-foreground/40 flex-1 text-left">—</span>
+                  <User className="size-3.5 text-muted-foreground/30" />
                 )}
-                <ChevronDown className="size-3 text-muted-foreground/40 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="min-w-[160px]">
@@ -482,9 +481,9 @@ function InlineAddRow({ activeProjectId, defaultProjectId }: { activeProjectId: 
         />
       </td>
       {/* Status */}
-      <td className="px-2 py-2 hidden sm:table-cell w-36" onClick={e => e.stopPropagation()}>
+      <td className="px-1.5 py-2 hidden sm:table-cell w-28" onClick={e => e.stopPropagation()}>
         <Select value={status} onValueChange={v => setStatus(v as Status)}>
-          <SelectTrigger className={cn("h-7 text-xs border-0 shadow-none focus:ring-0 px-2", statusCfg.color, statusCfg.bg)}>
+          <SelectTrigger className={cn("h-7 text-xs border-0 shadow-none focus:ring-0 px-1.5", statusCfg.color, statusCfg.bg)}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -495,7 +494,7 @@ function InlineAddRow({ activeProjectId, defaultProjectId }: { activeProjectId: 
         </Select>
       </td>
       {/* Priority — icon only */}
-      <td className="px-2 py-2 hidden sm:table-cell w-10" onClick={e => e.stopPropagation()}>
+      <td className="px-1 py-2 hidden sm:table-cell w-8" onClick={e => e.stopPropagation()}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
@@ -517,12 +516,12 @@ function InlineAddRow({ activeProjectId, defaultProjectId }: { activeProjectId: 
         </DropdownMenu>
       </td>
       {/* Project — only shown when not filtered to a project */}
-      <td className="px-2 py-2 hidden md:table-cell w-36" onClick={e => e.stopPropagation()}>
+      <td className="px-1.5 py-2 hidden md:table-cell w-24" onClick={e => e.stopPropagation()}>
         {activeProjectId ? (
           (() => {
             const p = projects.find(pr => pr.id === activeProjectId)
             return p ? (
-              <span className="flex items-center gap-1.5 text-xs">
+              <span className="flex items-center gap-1 text-xs" title={p.name}>
                 <ProjectIcon iconKey={p.emoji} className="size-3.5 shrink-0" style={{ color: p.color }} />
                 <span className="truncate">{p.name}</span>
               </span>
@@ -530,7 +529,7 @@ function InlineAddRow({ activeProjectId, defaultProjectId }: { activeProjectId: 
           })()
         ) : (
           <Select value={projectId} onValueChange={setProjectId}>
-            <SelectTrigger className="h-7 text-xs border-0 shadow-none focus:ring-0 px-2 w-full text-muted-foreground">
+            <SelectTrigger className="h-7 text-xs border-0 shadow-none focus:ring-0 px-1.5 w-full text-muted-foreground">
               <SelectValue placeholder="Projeto…" />
             </SelectTrigger>
             <SelectContent>
@@ -547,31 +546,30 @@ function InlineAddRow({ activeProjectId, defaultProjectId }: { activeProjectId: 
         )}
       </td>
       {/* Due date */}
-      <td className="px-2 py-2 hidden lg:table-cell w-32" onClick={e => e.stopPropagation()}>
+      <td className="px-1.5 py-2 hidden lg:table-cell w-24" onClick={e => e.stopPropagation()}>
         <div className="flex items-center gap-1">
           <CalendarDays className="size-3 shrink-0 text-muted-foreground" />
           <input
             type="date"
             value={dueDate}
             onChange={e => setDueDate(e.target.value)}
-            className="text-xs bg-transparent outline-none w-24 cursor-pointer text-muted-foreground"
+            className="text-xs bg-transparent outline-none w-16 cursor-pointer text-muted-foreground"
           />
         </div>
       </td>
-      {/* Assignee */}
-      <td className="px-2 py-2 hidden sm:table-cell w-36" onClick={e => e.stopPropagation()}>
+      {/* Assignee — ícone apenas */}
+      <td className="px-1 py-2 hidden sm:table-cell w-9" onClick={e => e.stopPropagation()}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-1.5 text-xs px-1 py-1 rounded hover:bg-muted transition-colors w-full max-w-[128px] group">
+            <button
+              className="flex items-center justify-center w-7 h-7 rounded hover:bg-muted transition-colors mx-auto"
+              title={assignee ?? "Sem responsável"}
+            >
               {assignee ? (
-                <>
-                  {(() => { const m = members.find(m => m.name === assignee); return m ? <MemberAvatar member={m} size="xs" /> : null })()}
-                  <span className="truncate flex-1 text-left">{assignee}</span>
-                </>
+                (() => { const m = members.find(m => m.name === assignee); return m ? <MemberAvatar member={m} size="xs" /> : <User className="size-3.5 text-muted-foreground/50" /> })()
               ) : (
-                <span className="text-muted-foreground/40 flex-1 text-left">Responsável…</span>
+                <User className="size-3.5 text-muted-foreground/30" />
               )}
-              <ChevronDown className="size-3 text-muted-foreground/40 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="min-w-[160px]">
@@ -887,11 +885,11 @@ export function ListView({ onOpenTask, todayFilter = false, noDueDateFilter = fa
                       <th className="w-7 px-2" />
                       <th className="w-8 px-2" />
                       <th className="text-left px-2 py-2.5"><SortBtn k="title" label="Tarefa" /></th>
-                      <th className="text-left px-2 py-2.5 hidden sm:table-cell w-36"><SortBtn k="status" label="Status" /></th>
-                      <th className="px-2 py-2.5 hidden sm:table-cell w-10" title="Prioridade"><Flag className="size-3 text-muted-foreground/60" /></th>
-                      <th className="text-left px-2 py-2.5 hidden md:table-cell w-36 text-xs font-medium text-muted-foreground">Projeto</th>
-                      <th className="text-left px-2 py-2.5 hidden lg:table-cell w-32"><SortBtn k="dueDate" label="Prazo" /></th>
-                      <th className="text-left px-2 py-2.5 hidden sm:table-cell w-36 text-xs font-medium text-muted-foreground">Responsável</th>
+                      <th className="text-left px-1.5 py-2.5 hidden sm:table-cell w-28"><SortBtn k="status" label="Status" /></th>
+                      <th className="px-1.5 py-2.5 hidden sm:table-cell w-8" title="Prioridade"><Flag className="size-3 text-muted-foreground/60" /></th>
+                      <th className="text-left px-1.5 py-2.5 hidden md:table-cell w-24 text-xs font-medium text-muted-foreground">Projeto</th>
+                      <th className="text-left px-1.5 py-2.5 hidden lg:table-cell w-24"><SortBtn k="dueDate" label="Prazo" /></th>
+                      <th className="px-1.5 py-2.5 hidden sm:table-cell w-9" title="Responsável"><User className="size-3 text-muted-foreground/60" /></th>
                       <th className="w-10" />
                     </tr>
                   </thead>
