@@ -12,6 +12,7 @@ export type Recurring = "daily" | "weekly" | "biweekly" | "monthly" | null
 export interface Comment {
   id: string
   text: string
+  authorId: string | null
   createdAt: string
 }
 
@@ -57,6 +58,7 @@ export interface Project {
   name: string
   color: string
   emoji: string
+  suspended: boolean
   createdBy: string | null
 }
 
@@ -97,7 +99,7 @@ const task = (overrides: Partial<Task> & Pick<Task, "id" | "title" | "status" | 
 
 export const DEMO_TASKS: Task[] = [
   task({ id: "t1", title: "Criar briefing campanha cliente X", status: "in-progress", priority: "high", projectId: "p1", dueDate: "2026-06-05", tags: ["briefing"], description: "Preparar documento de briefing completo para apresentação ao cliente.", checklist: [{ id: "c1", text: "Definir objetivos da campanha", done: true }, { id: "c2", text: "Levantar referências visuais", done: false }, { id: "c3", text: "Validar com cliente", done: false }], activity: [{ id: "a1", text: "Tarefa criada", createdAt: "2026-05-28T10:00:00Z" }, { id: "a2", text: "Status alterado para Em Andamento", createdAt: "2026-05-29T09:00:00Z" }], comments: [], recurring: null }),
-  task({ id: "t2", title: "Revisão relatório de mídia maio", status: "review", priority: "high", projectId: "p2", dueDate: "2026-06-02", tags: ["relatório"], comments: [{ id: "cm1", text: "Já adicionei os dados do Meta. Falta Google.", createdAt: "2026-05-29T14:00:00Z" }], recurring: null }),
+  task({ id: "t2", title: "Revisão relatório de mídia maio", status: "review", priority: "high", projectId: "p2", dueDate: "2026-06-02", tags: ["relatório"], comments: [{ id: "cm1", text: "Já adicionei os dados do Meta. Falta Google.", authorId: null, createdAt: "2026-05-29T14:00:00Z" }], recurring: null }),
   task({ id: "t3", title: "Onboarding cliente novo", status: "todo", priority: "medium", projectId: "p5", dueDate: "2026-06-10", tags: ["onboarding"], description: "Preparar apresentação de boas-vindas e fluxo de trabalho.", checklist: [{ id: "c1", text: "Preparar deck de apresentação", done: false }, { id: "c2", text: "Enviar acesso às ferramentas", done: false }], recurring: null }),
   task({ id: "t4", title: "Atualizar proposta comercial", status: "todo", priority: "low", projectId: "p3", recurring: null }),
   task({ id: "t5", title: "Setup campanha Google Ads", status: "todo", priority: "urgent", projectId: "p2", dueDate: "2026-06-03", tags: ["ads"], description: "Criar estrutura de campanhas para Q3.", checklist: [{ id: "c1", text: "Definir estrutura de campanhas", done: false }, { id: "c2", text: "Criar públicos-alvo", done: false }], recurring: null }),

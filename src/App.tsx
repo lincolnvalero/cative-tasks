@@ -25,6 +25,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useTheme } from "@/components/theme-provider"
 import { useApp } from "@/context/AppContext"
 import { MemberAvatar } from "@/components/MemberAvatar"
+import { NotificationBell } from "@/components/NotificationBell"
 import { Toaster, toast } from "sonner"
 import { Sun, Moon, Monitor, Search, Loader2, Bot, User, ChevronsUpDown, LogOut } from "lucide-react"
 import type { Task } from "@/types/task"
@@ -131,6 +132,7 @@ function AppInner() {
             <Bot className="size-4" />
           </Button>
           <ThemeToggle />
+          <NotificationBell />
           <UserMenu />
         </header>
 

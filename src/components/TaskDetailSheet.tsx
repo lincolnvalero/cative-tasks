@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Progress } from "@/components/ui/progress"
 import { useApp } from "@/context/AppContext"
+import { useAuth } from "@/context/AuthContext"
 import type { Task, Status, Priority, Recurring } from "@/types/task"
 import { STATUS_CONFIG, PRIORITY_CONFIG, RECURRING_CONFIG } from "@/types/task"
 import { ProjectIcon } from "@/components/ProjectIcon"
@@ -50,6 +51,7 @@ function TaskDetailContent({ task, onClose }: { task: Task; onClose: () => void 
     addTaskLink, deleteTaskLink, duplicateTask,
     members,
   } = useApp()
+  const { profile, isAdmin } = useAuth()
 
   const [title, setTitle] = useState(task.title)
   const [description, setDescription] = useState(task.description)
@@ -381,25 +383,35 @@ function TaskDetailContent({ task, onClose }: { task: Task; onClose: () => void 
                 {comments.length === 0 && (
                   <p className="text-xs text-muted-foreground text-center py-4">Nenhum comentário ainda.</p>
                 )}
-                {comments.map(comment => (
-                  <div key={comment.id} className="flex gap-2.5 group">
-                    <div className="size-7 rounded-full bg-primary/20 flex items-center justify-center text-xs font-semibold text-primary shrink-0 mt-0.5">L</div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-xs font-semibold">Lincoln</span>
-                        <span className="text-xs text-muted-foreground">
-                          {formatDistanceToNow(parseISO(comment.createdAt), { addSuffix: true, locale: ptBR })}
-                        </span>
-                        <button onClick={() => deleteComment(task.id, comment.id)} className="ml-auto opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all">
-                          <X className="size-3" />
-                        </button>
+                {comments.map(comment => {
+                  const author = members.find(m => m.id === comment.authorId)
+                  const canDelete = isAdmin || comment.authorId === profile?.id
+                  return (
+                    <div key={comment.id} className="flex gap-2.5 group">
+                      {author ? (
+                        <MemberAvatar member={author} size="sm" className="mt-0.5" />
+                      ) : (
+                        <div className="size-7 rounded-full bg-muted flex items-center justify-center text-xs font-semibold text-muted-foreground shrink-0 mt-0.5">?</div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-xs font-semibold">{author?.name ?? "Ex-membro"}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {formatDistanceToNow(parseISO(comment.createdAt), { addSuffix: true, locale: ptBR })}
+                          </span>
+                          {canDelete && (
+                            <button onClick={() => deleteComment(task.id, comment.id)} className="ml-auto opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all">
+                              <X className="size-3" />
+                            </button>
+                          )}
+                        </div>
+                        <div className="mt-1 text-sm bg-muted/40 rounded-lg px-3 py-2 leading-relaxed">{comment.text}</div>
                       </div>
-                      <div className="mt-1 text-sm bg-muted/40 rounded-lg px-3 py-2 leading-relaxed">{comment.text}</div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
                 <div className="flex gap-2 mt-2">
-                  <div className="size-7 rounded-full bg-primary/20 flex items-center justify-center text-xs font-semibold text-primary shrink-0 mt-1">L</div>
+                  {profile ? <MemberAvatar member={profile} size="sm" className="mt-1" /> : <div className="size-7 rounded-full bg-primary/20 shrink-0 mt-1" />}
                   <div className="flex-1 flex flex-col gap-1.5">
                     <Textarea
                       ref={commentInputRef}

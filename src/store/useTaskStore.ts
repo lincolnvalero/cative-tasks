@@ -12,6 +12,7 @@ function mapProject(row: Record<string, unknown>): Project {
     name: row.name as string,
     color: row.color as string,
     emoji: row.emoji as string,
+    suspended: !!row.suspended,
     createdBy: (row.created_by as string) ?? null,
   }
 }
@@ -44,7 +45,12 @@ function mapTask(
 }
 
 function mapComment(row: Record<string, unknown>): Comment {
-  return { id: row.id as string, text: row.text as string, createdAt: row.created_at as string }
+  return {
+    id: row.id as string,
+    text: row.text as string,
+    authorId: (row.author_id as string) ?? null,
+    createdAt: row.created_at as string,
+  }
 }
 
 function mapChecklist(row: Record<string, unknown>): ChecklistItem {
@@ -161,8 +167,26 @@ export function useTaskStore() {
           })
           .subscribe()
 
+        // Chat por tarefa — comentários chegam ao vivo pra todo mundo com a tarefa aberta
+        const commentSubscription = supabase
+          .channel('lt_task_comments_changes')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'lt_task_comments' }, (payload) => {
+            if (payload.eventType === 'INSERT') {
+              const comment = mapComment(payload.new)
+              setTasks(prev => prev.map(t => t.id !== payload.new.task_id
+                ? t
+                : { ...t, comments: t.comments.some(c => c.id === comment.id) ? t.comments : [...t.comments, comment] }))
+            } else if (payload.eventType === 'DELETE') {
+              setTasks(prev => prev.map(t => t.id !== payload.old.task_id
+                ? t
+                : { ...t, comments: t.comments.filter(c => c.id !== payload.old.id) }))
+            }
+          })
+          .subscribe()
+
         return () => {
           taskSubscription.unsubscribe()
+          commentSubscription.unsubscribe()
         }
       } finally {
         setLoading(false)
@@ -369,13 +393,17 @@ export function useTaskStore() {
   async function addComment(taskId: string, text: string): Promise<boolean> {
     try {
       setSaving(true)
-      const { data, error } = await supabase.from("lt_task_comments").insert({ task_id: taskId, text }).select().single()
+      const { data: { user } } = await supabase.auth.getUser()
+      const { data, error } = await supabase.from("lt_task_comments")
+        .insert({ task_id: taskId, text, author_id: user?.id ?? null }).select().single()
       if (error || !data) {
         toast.error("Erro ao adicionar comentário")
         return false
       }
       const comment = mapComment(data)
-      setTasks(prev => prev.map(t => t.id === taskId ? { ...t, comments: [...(t.comments ?? []), comment] } : t))
+      setTasks(prev => prev.map(t => t.id === taskId
+        ? { ...t, comments: t.comments.some(c => c.id === comment.id) ? t.comments : [...(t.comments ?? []), comment] }
+        : t))
       return true
     } finally {
       setSaving(false)
@@ -483,7 +511,7 @@ export function useTaskStore() {
 
   // ── Projects ───────────────────────────────────────────────────────────────
 
-  async function addProject(projectData: Omit<Project, "id" | "createdBy">) {
+  async function addProject(projectData: Omit<Project, "id" | "createdBy" | "suspended">) {
     try {
       setSaving(true)
       const { data: { user } } = await supabase.auth.getUser()
@@ -509,9 +537,14 @@ export function useTaskStore() {
   async function updateProject(id: string, patch: Partial<Project>): Promise<boolean> {
     try {
       setSaving(true)
-      const { error } = await supabase.from("lt_projects").update({ name: patch.name, color: patch.color, emoji: patch.emoji }).eq("id", id)
+      const dbPatch: Record<string, unknown> = {}
+      if (patch.name !== undefined) dbPatch.name = patch.name
+      if (patch.color !== undefined) dbPatch.color = patch.color
+      if (patch.emoji !== undefined) dbPatch.emoji = patch.emoji
+      if (patch.suspended !== undefined) dbPatch.suspended = patch.suspended
+      const { error } = await supabase.from("lt_projects").update(dbPatch).eq("id", id)
       if (error) {
-        toast.error("Erro ao atualizar projeto")
+        toast.error(patch.suspended !== undefined ? "Só administradores podem suspender/reativar um projeto" : "Erro ao atualizar projeto")
         return false
       }
       setProjects(prev => prev.map(p => p.id === id ? { ...p, ...patch } : p))

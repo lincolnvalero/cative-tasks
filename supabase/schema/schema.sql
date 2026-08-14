@@ -35,6 +35,7 @@ create table public.lt_projects (
   name       text not null,
   color      text not null,
   emoji      text not null,
+  suspended  boolean not null default false,
   created_at timestamptz not null default now(),
   created_by uuid references public.profiles(id)
 );
@@ -70,6 +71,7 @@ create table public.lt_task_comments (
   id         uuid primary key default gen_random_uuid(),
   task_id    uuid not null references public.lt_tasks(id) on delete cascade,
   text       text not null,
+  author_id  uuid references public.profiles(id) on delete set null,
   created_at timestamptz not null default now()
 );
 
@@ -98,6 +100,22 @@ create table public.lt_task_links (
   title      text not null,
   url        text not null,
   created_at timestamptz not null default now()
+);
+
+-- ── lt_notifications ─────────────────────────────────────────────────────────
+-- Convites de projeto (e outras notificações futuras). Qualquer usuário pode
+-- convidar qualquer outro pra um projeto que ele já vê — o convite só vira
+-- acesso de fato (linha em lt_project_members) quando o destinatário aceita.
+create table public.lt_notifications (
+  id           uuid primary key default gen_random_uuid(),
+  recipient_id uuid not null references public.profiles(id) on delete cascade,
+  actor_id     uuid references public.profiles(id) on delete set null,
+  type         text not null,
+  project_id   uuid references public.lt_projects(id) on delete cascade,
+  task_id      uuid references public.lt_tasks(id) on delete cascade,
+  status       text not null default 'pending',
+  created_at   timestamptz not null default now(),
+  responded_at timestamptz
 );
 
 -- ── lt_notes ─────────────────────────────────────────────────────────────────
@@ -175,6 +193,20 @@ create table public.lt_vocal_profile (
   updated_at  timestamptz not null default now()
 );
 
+-- ── lt_project_files ─────────────────────────────────────────────────────────
+-- Metadados dos arquivos de cada projeto — o binário fica no bucket
+-- "project-files" do Supabase Storage, no caminho "{project_id}/{arquivo}".
+create table public.lt_project_files (
+  id          uuid primary key default gen_random_uuid(),
+  project_id  uuid not null references public.lt_projects(id) on delete cascade,
+  name        text not null,
+  path        text not null,
+  size        bigint not null default 0,
+  mime_type   text not null default 'application/octet-stream',
+  uploaded_by uuid references public.profiles(id) on delete set null,
+  created_at  timestamptz not null default now()
+);
+
 -- ============================================================================
 -- Funções
 -- ============================================================================
@@ -197,6 +229,25 @@ as $$
   );
 $$;
 
+-- Só admin pode suspender/reativar um projeto (função master), mesmo que
+-- também seja dono. Bloqueia a alteração desse campo específico via trigger.
+create or replace function public.prevent_non_admin_suspend_toggle()
+returns trigger
+language plpgsql
+security definer
+as $$
+begin
+  if new.suspended is distinct from old.suspended and not public.is_admin() then
+    raise exception 'Só administradores podem suspender ou reativar um projeto';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger lt_projects_suspend_guard
+before update on public.lt_projects
+for each row execute function public.prevent_non_admin_suspend_toggle();
+
 -- ============================================================================
 -- Row Level Security
 -- ============================================================================
@@ -204,6 +255,8 @@ $$;
 alter table public.profiles            enable row level security;
 alter table public.lt_projects         enable row level security;
 alter table public.lt_project_members  enable row level security;
+alter table public.lt_notifications    enable row level security;
+alter table public.lt_project_files    enable row level security;
 alter table public.lt_tasks            enable row level security;
 alter table public.lt_task_comments    enable row level security;
 alter table public.lt_task_checklist   enable row level security;
@@ -248,12 +301,49 @@ create policy project_members_delete on public.lt_project_members
       select 1 from public.lt_projects p where p.id = project_id and p.created_by = auth.uid()
     )
   );
+-- Permite que o próprio usuário se adicione (fluxo de aceitar convite)
+create policy project_members_insert_self on public.lt_project_members
+  for insert to authenticated with check (user_id = auth.uid());
 
--- lt_tasks e sub-tabelas — acesso segue o projeto da tarefa
-create policy tasks_all on public.lt_tasks
+-- lt_notifications — cada um só vê/mexe nas notificações que enviou ou recebeu
+create policy notifications_select on public.lt_notifications
+  for select to authenticated using (recipient_id = auth.uid() or actor_id = auth.uid());
+create policy notifications_insert on public.lt_notifications
+  for insert to authenticated with check (actor_id = auth.uid());
+create policy notifications_update on public.lt_notifications
+  for update to authenticated using (recipient_id = auth.uid());
+create policy notifications_delete on public.lt_notifications
+  for delete to authenticated using (recipient_id = auth.uid() or actor_id = auth.uid());
+
+-- lt_project_files
+create policy project_files_all on public.lt_project_files
   for all to authenticated
   using (public.has_project_access(project_id))
   with check (public.has_project_access(project_id));
+
+-- lt_tasks e sub-tabelas — acesso segue o projeto da tarefa. Projeto suspenso
+-- vira só-leitura pra quem não é admin (é o que "suspender projeto" faz).
+create policy tasks_select on public.lt_tasks
+  for select to authenticated using (public.has_project_access(project_id));
+
+create policy tasks_write on public.lt_tasks
+  for insert to authenticated with check (
+    public.has_project_access(project_id) and
+    (public.is_admin() or not exists (select 1 from public.lt_projects p where p.id = project_id and p.suspended))
+  );
+
+create policy tasks_update on public.lt_tasks
+  for update to authenticated
+  using (public.has_project_access(project_id))
+  with check (
+    public.is_admin() or not exists (select 1 from public.lt_projects p where p.id = project_id and p.suspended)
+  );
+
+create policy tasks_delete on public.lt_tasks
+  for delete to authenticated using (
+    public.has_project_access(project_id) and
+    (public.is_admin() or not exists (select 1 from public.lt_projects p where p.id = project_id and p.suspended))
+  );
 
 create policy task_comments_all on public.lt_task_comments
   for all to authenticated
@@ -297,6 +387,28 @@ create policy vocal_profile_all on public.lt_vocal_profile
 
 alter publication supabase_realtime add table public.lt_tasks;
 alter publication supabase_realtime add table public.lt_inbox_items;
+alter publication supabase_realtime add table public.lt_notifications;
+alter publication supabase_realtime add table public.lt_task_comments;
+
+-- ============================================================================
+-- Storage — arquivos de projeto (upload/download)
+-- ============================================================================
+-- Bucket privado; cada arquivo é salvo em "{project_id}/{nome-do-arquivo}" e
+-- as policies abaixo usam esse primeiro segmento do caminho pra decidir quem
+-- pode ler/enviar/apagar (mesma regra de has_project_access das tabelas).
+
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('project-files', 'project-files', false, 26214400) -- 25MB por arquivo
+on conflict (id) do nothing;
+
+create policy storage_project_files_select on storage.objects for select to authenticated
+  using (bucket_id = 'project-files' and public.has_project_access(((storage.foldername(name))[1])::uuid));
+
+create policy storage_project_files_insert on storage.objects for insert to authenticated
+  with check (bucket_id = 'project-files' and public.has_project_access(((storage.foldername(name))[1])::uuid));
+
+create policy storage_project_files_delete on storage.objects for delete to authenticated
+  using (bucket_id = 'project-files' and public.has_project_access(((storage.foldername(name))[1])::uuid));
 
 -- ============================================================================
 -- Bootstrap: primeira conta admin

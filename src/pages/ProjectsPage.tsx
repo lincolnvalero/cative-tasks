@@ -7,44 +7,57 @@ import { PROJECT_COLORS } from "@/types/task"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { ProjectIcon, PROJECT_ICONS } from "@/components/ProjectIcon"
 import { MemberAvatar } from "@/components/MemberAvatar"
 import { showConfirm } from "@/components/ConfirmDialog"
-import { Plus, Pencil, Trash2, CheckCircle2, Clock, Users, Check } from "lucide-react"
+import { Plus, Pencil, Trash2, CheckCircle2, Clock, Users, Check, Clock3, Paperclip, Ban, PlayCircle } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { ProjectFilesDialog } from "@/components/ProjectFilesDialog"
 
 const emptyForm = { name: "", emoji: "target", color: PROJECT_COLORS[0] }
 
 export function ProjectsPage() {
-  const { projects, tasks, members, addProject, updateProject, deleteProject } = useApp()
-  const { profile, isAdmin } = useAuth()
+  const { projects, tasks, members, addProject, updateProject, deleteProject, sendProjectInvite, cancelInvite } = useApp()
+  const { isAdmin } = useAuth()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingProject, setEditingProject] = useState<Project | null>(null)
   const [form, setForm] = useState(emptyForm)
   const [inviteProject, setInviteProject] = useState<Project | null>(null)
+  const [filesProject, setFilesProject] = useState<Project | null>(null)
   const [projectMemberIds, setProjectMemberIds] = useState<string[]>([])
+  const [pendingInviteIds, setPendingInviteIds] = useState<string[]>([])
+
+  async function loadInviteState(projectId: string) {
+    const [{ data: memberRows }, { data: pendingRows }] = await Promise.all([
+      supabase.from("lt_project_members").select("user_id").eq("project_id", projectId),
+      supabase.from("lt_notifications").select("recipient_id")
+        .eq("project_id", projectId).eq("type", "project_invite").eq("status", "pending"),
+    ])
+    setProjectMemberIds((memberRows ?? []).map(r => r.user_id as string))
+    setPendingInviteIds((pendingRows ?? []).map(r => r.recipient_id as string))
+  }
 
   useEffect(() => {
     if (!inviteProject) return
-    supabase.from("lt_project_members").select("user_id").eq("project_id", inviteProject.id)
-      .then(({ data }) => setProjectMemberIds((data ?? []).map(r => r.user_id as string)))
+    loadInviteState(inviteProject.id)
   }, [inviteProject])
 
   async function toggleProjectMember(userId: string) {
     if (!inviteProject) return
-    const has = projectMemberIds.includes(userId)
-    if (has) {
-      const { error } = await supabase.from("lt_project_members").delete()
-        .eq("project_id", inviteProject.id).eq("user_id", userId)
-      if (error) { toast.error("Erro ao remover acesso"); return }
-      setProjectMemberIds(prev => prev.filter(id => id !== userId))
-    } else {
-      const { error } = await supabase.from("lt_project_members").insert({ project_id: inviteProject.id, user_id: userId })
-      if (error) { toast.error("Erro ao conceder acesso"); return }
-      setProjectMemberIds(prev => [...prev, userId])
+    if (projectMemberIds.includes(userId)) return // remoção de acesso fica só pra admin/dono, fora deste fluxo
+    if (pendingInviteIds.includes(userId)) {
+      const ok = await cancelInvite(userId, inviteProject.id)
+      if (ok) setPendingInviteIds(prev => prev.filter(id => id !== userId))
+      return
+    }
+    const ok = await sendProjectInvite(userId, inviteProject.id)
+    if (ok) {
+      setPendingInviteIds(prev => [...prev, userId])
+      toast.success("Convite enviado!")
     }
   }
 
@@ -90,6 +103,21 @@ export function ProjectsPage() {
     }
   }
 
+  async function handleToggleSuspend(project: Project) {
+    const suspending = !project.suspended
+    if (suspending) {
+      const ok = await showConfirm({
+        title: `Suspender "${project.name}"?`,
+        description: "Ninguém (exceto admins) vai conseguir criar, editar ou excluir tarefas neste projeto até ele ser reativado.",
+        confirmLabel: "Suspender",
+        variant: "destructive",
+      })
+      if (!ok) return
+    }
+    const done = await updateProject(project.id, { suspended: suspending })
+    if (done) toast.success(suspending ? "Projeto suspenso" : "Projeto reativado")
+  }
+
   return (
     <>
       <div className="flex flex-col gap-6">
@@ -112,7 +140,7 @@ export function ProjectsPage() {
             const pct = projectTasks.length > 0 ? Math.round((done / projectTasks.length) * 100) : 0
 
             return (
-              <Card key={project.id} className="group hover:shadow-md transition-shadow">
+              <Card key={project.id} className={cn("group hover:shadow-md transition-shadow", project.suspended && "opacity-60")}>
                 <CardHeader className="pb-2">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
@@ -123,16 +151,29 @@ export function ProjectsPage() {
                         <ProjectIcon iconKey={project.emoji} size={20} style={{ color: project.color }} />
                       </div>
                       <div>
-                        <CardTitle className="text-base">{project.name}</CardTitle>
+                        <div className="flex items-center gap-1.5">
+                          <CardTitle className="text-base">{project.name}</CardTitle>
+                          {project.suspended && <Badge variant="destructive" className="text-[10px] py-0 px-1.5 h-4">Suspenso</Badge>}
+                        </div>
                         <p className="text-xs text-muted-foreground mt-0.5">
                           {projectTasks.length} tarefa{projectTasks.length !== 1 ? "s" : ""}
                         </p>
                       </div>
                     </div>
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {(isAdmin || project.createdBy === profile?.id) && (
-                        <Button variant="ghost" size="icon" className="size-7" title="Convidar" onClick={() => setInviteProject(project)}>
-                          <Users className="size-3.5" />
+                      <Button variant="ghost" size="icon" className="size-7" title="Convidar" onClick={() => setInviteProject(project)}>
+                        <Users className="size-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="size-7" title="Arquivos" onClick={() => setFilesProject(project)}>
+                        <Paperclip className="size-3.5" />
+                      </Button>
+                      {isAdmin && (
+                        <Button
+                          variant="ghost" size="icon" className="size-7"
+                          title={project.suspended ? "Reativar projeto" : "Suspender projeto"}
+                          onClick={() => handleToggleSuspend(project)}
+                        >
+                          {project.suspended ? <PlayCircle className="size-3.5" /> : <Ban className="size-3.5" />}
                         </Button>
                       )}
                       <Button variant="ghost" size="icon" className="size-7" onClick={() => openEdit(project)}>
@@ -283,22 +324,31 @@ export function ProjectsPage() {
           <div className="flex flex-col gap-1 max-h-72 overflow-y-auto">
             {members.map(m => {
               const has = projectMemberIds.includes(m.id)
+              const isPending = pendingInviteIds.includes(m.id)
               return (
                 <button
                   key={m.id}
                   onClick={() => toggleProjectMember(m.id)}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted transition-colors text-left"
+                  disabled={has}
+                  className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted transition-colors text-left disabled:cursor-default disabled:hover:bg-transparent"
                 >
                   <MemberAvatar member={m} size="xs" />
                   <span className="flex-1 text-sm">{m.name}</span>
                   {has && <Check className="size-4 text-primary" />}
+                  {!has && isPending && (
+                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                      <Clock3 className="size-3" /> Convite enviado
+                    </span>
+                  )}
                 </button>
               )
             })}
           </div>
-          <p className="text-xs text-muted-foreground">Quem tiver o check vê e edita as tarefas deste projeto.</p>
+          <p className="text-xs text-muted-foreground">Clique pra convidar — a pessoa só passa a ver as tarefas depois de aceitar a notificação.</p>
         </DialogContent>
       </Dialog>
+
+      <ProjectFilesDialog project={filesProject} onClose={() => setFilesProject(null)} />
     </>
   )
 }

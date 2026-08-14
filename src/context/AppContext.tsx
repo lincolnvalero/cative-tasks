@@ -1,7 +1,10 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import { useTaskStore } from "@/store/useTaskStore"
 import { useMembersStore } from "@/store/useMembersStore"
+import { useNotificationsStore } from "@/store/useNotificationsStore"
+import { useAuth } from "@/context/AuthContext"
 import type { Task, Project, Status, Member } from "@/types/task"
+import type { AppNotification } from "@/types/notification"
 
 interface AppContextValue {
   tasks: Task[]
@@ -24,7 +27,7 @@ interface AppContextValue {
   updateChecklistItem: (taskId: string, itemId: string, text: string) => void
   deleteChecklistItem: (taskId: string, itemId: string) => void
   reorderChecklist: (taskId: string, orderedIds: string[]) => Promise<void>
-  addProject: (project: Omit<Project, "id" | "createdBy">) => Promise<Project | undefined>
+  addProject: (project: Omit<Project, "id" | "createdBy" | "suspended">) => Promise<Project | undefined>
   updateProject: (id: string, patch: Partial<Project>) => Promise<boolean>
   deleteProject: (id: string) => Promise<boolean>
   addTaskLink: (taskId: string, title: string, url: string) => void
@@ -34,6 +37,13 @@ interface AppContextValue {
   members: Member[]
   membersLoading: boolean
   refetchMembers: () => Promise<void>
+  // Notificações
+  notifications: AppNotification[]
+  notificationsLoading: boolean
+  sendProjectInvite: (recipientId: string, projectId: string) => Promise<boolean>
+  cancelInvite: (recipientId: string, projectId: string) => Promise<boolean>
+  acceptInvite: (notification: AppNotification) => Promise<boolean>
+  dismissNotification: (id: string) => Promise<boolean>
 }
 
 const AppContext = createContext<AppContextValue | null>(null)
@@ -41,6 +51,8 @@ const AppContext = createContext<AppContextValue | null>(null)
 export function AppProvider({ children }: { children: ReactNode }) {
   const store = useTaskStore()
   const membersStore = useMembersStore()
+  const { session } = useAuth()
+  const notificationsStore = useNotificationsStore(session?.user?.id ?? null)
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null)
 
   useEffect(() => { membersStore.fetchMembers() }, [])
@@ -52,6 +64,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       members: membersStore.members,
       membersLoading: membersStore.loading,
       refetchMembers: membersStore.fetchMembers,
+      ...notificationsStore,
     }}>
       {children}
     </AppContext.Provider>

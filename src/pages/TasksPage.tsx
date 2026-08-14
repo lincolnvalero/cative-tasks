@@ -7,8 +7,9 @@ import { WorkloadView } from "@/components/views/WorkloadView"
 import { TaskDialog } from "@/components/TaskDialog"
 import { ShortcutsDialog } from "@/components/ShortcutsDialog"
 import { useApp } from "@/context/AppContext"
+import { useAuth } from "@/context/AuthContext"
 import type { Task } from "@/types/task"
-import { Plus, Kanban, List, BarChart3, ChevronDown, FolderKanban, Users, Clock, CalendarClock, RotateCcw, SlidersHorizontal } from "lucide-react"
+import { Plus, Kanban, List, BarChart3, ChevronDown, FolderKanban, Users, Clock, CalendarClock, RotateCcw, SlidersHorizontal, Ban } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { MemberAvatar } from "@/components/MemberAvatar"
 import { ProjectIcon } from "@/components/ProjectIcon"
@@ -25,6 +26,9 @@ type DueDateFilter = null | "overdue" | "this-week" | "next-30"
 
 export function TasksPage({ onOpenTask, newTaskOpen = false, onNewTaskClose }: Props) {
   const { projects, activeProjectId, setActiveProjectId, tasks, members } = useApp()
+  const { isAdmin } = useAuth()
+  const activeProject = projects.find(p => p.id === activeProjectId)
+  const readOnly = !!activeProject?.suspended && !isAdmin
   const [localNewOpen, setLocalNewOpen] = useState(false)
   const [todayFilter, setTodayFilter] = useState(false)
   const [noDueDateFilter, setNoDueDateFilter] = useState(false)
@@ -102,12 +106,19 @@ export function TasksPage({ onOpenTask, newTaskOpen = false, onNewTaskClose }: P
         {/* Header */}
         <div className="flex items-center justify-between gap-3">
           <h1 className="text-xl sm:text-2xl font-bold">Tarefas</h1>
-          <Button onClick={() => setLocalNewOpen(true)} size="sm" className="shrink-0 gap-1.5">
+          <Button onClick={() => setLocalNewOpen(true)} size="sm" className="shrink-0 gap-1.5" disabled={readOnly}>
             <Plus className="size-4" />
             <span className="hidden sm:inline">Nova tarefa</span>
             <span className="sm:hidden">Nova</span>
           </Button>
         </div>
+
+        {readOnly && (
+          <div className="flex items-center gap-2 text-xs bg-destructive/10 text-destructive border border-destructive/30 rounded-lg px-3 py-2">
+            <Ban className="size-3.5 shrink-0" />
+            Este projeto está suspenso — só administradores podem criar, editar ou excluir tarefas aqui.
+          </div>
+        )}
 
         {/* Filter toolbar + view switcher, all in one row */}
         <div className="flex items-center gap-2 flex-wrap">
