@@ -34,7 +34,7 @@ interface Props {
 export function TaskDetailSheet({ task, onClose }: Props) {
   return (
     <Sheet open={!!task} onOpenChange={v => !v && onClose()}>
-      <SheetContent className="w-full sm:max-w-[580px] p-0 flex flex-col gap-0" side="right" data-vaul-drawer-direction="right">
+      <SheetContent className="w-full sm:max-w-[620px] p-0 flex flex-col gap-0" side="right" data-vaul-drawer-direction="right">
         <SheetTitle className="sr-only">Detalhes da tarefa</SheetTitle>
         {task && <TaskDetailContent task={task} onClose={onClose} />}
       </SheetContent>
@@ -157,47 +157,43 @@ function TaskDetailContent({ task, onClose }: { task: Task; onClose: () => void 
   return (
     <>
       {/* Header — pr-12 garante espaço para o X automático do Sheet */}
-      <div className="flex items-center gap-2 flex-wrap px-5 py-2 pr-12 border-b shrink-0">
-        <Badge variant="outline" className={cn("text-xs", statusCfg.color, statusCfg.bg)}>
-          {statusCfg.label}
-        </Badge>
-        {task.priority !== "none" && (
-          <Badge variant="outline" className={cn("text-xs", priorityCfg.color)}>
-            <Flag className="size-3 mr-1" />{priorityCfg.label}
+      <div className="flex items-center justify-between gap-2 px-5 py-2 pr-12 border-b shrink-0">
+        <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+          <Badge variant="outline" className={cn("text-xs", statusCfg.color, statusCfg.bg)}>
+            {statusCfg.label}
           </Badge>
-        )}
-        {task.recurring && (
-          <Badge variant="secondary" className="text-xs gap-1">
-            <RefreshCw className="size-3" />{RECURRING_CONFIG[task.recurring]}
-          </Badge>
-        )}
-      </div>
-
-      {/* Action buttons */}
-      <div className="flex items-center gap-1 px-5 py-1.5 border-b shrink-0">
-        <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={handleDuplicate} title="Duplicar tarefa">
-          <Copy className="size-3.5" />
-          <span className="hidden sm:inline">Copiar</span>
-        </Button>
+          {task.priority !== "none" && (
+            <Badge variant="outline" className={cn("text-xs", priorityCfg.color)}>
+              <Flag className="size-3 mr-1" />{priorityCfg.label}
+            </Badge>
+          )}
+          {task.recurring && (
+            <Badge variant="secondary" className="text-xs gap-1">
+              <RefreshCw className="size-3" />{RECURRING_CONFIG[task.recurring]}
+            </Badge>
+          )}
+        </div>
+        <div className="flex items-center gap-0.5 shrink-0">
+          <Button variant="ghost" size="icon" className="size-7" onClick={handleDuplicate} title="Duplicar tarefa">
+            <Copy className="size-3.5" />
+          </Button>
+          <Button variant="ghost" size="icon" className="size-7 hover:text-destructive" onClick={handleDelete} title="Excluir tarefa">
+            <Trash2 className="size-3.5" />
+          </Button>
+        </div>
       </div>
 
       <ScrollArea className="flex-1 min-h-0">
         <div className="flex flex-col gap-3.5 px-5 py-3">
 
-          {/* Title + lixeira na mesma linha */}
-          <div className="flex items-start gap-2">
           <input
-            className="text-xl font-bold bg-transparent border-none outline-none flex-1 leading-snug placeholder:text-muted-foreground"
+            className="text-xl font-bold bg-transparent border-none outline-none w-full leading-snug placeholder:text-muted-foreground"
             value={title}
             onChange={e => setTitle(e.target.value)}
             onBlur={saveTitle}
             onKeyDown={e => e.key === "Enter" && e.currentTarget.blur()}
             placeholder="Título da tarefa"
           />
-          <Button variant="ghost" size="icon" className="size-8 shrink-0 hover:text-destructive mt-0.5" onClick={handleDelete} title="Excluir tarefa">
-            <Trash2 className="size-4" />
-          </Button>
-          </div>
 
           {/* Properties — grid compacto 2 colunas, pra sobrar espaço pros tabs de baixo */}
           <div className="grid grid-cols-2 gap-x-3 gap-y-2 rounded-lg border p-2.5 text-sm">
@@ -324,22 +320,37 @@ function TaskDetailContent({ task, onClose }: { task: Task; onClose: () => void 
 
           <Separator />
 
-          {/* Tabs */}
+          {/* Tabs — grid de 4 colunas fixas: nunca estoura largura nem pede scroll horizontal */}
           <div className="flex flex-col gap-3">
-            <div className="flex gap-1 border-b overflow-x-auto">
+            <div className="grid grid-cols-4 border-b">
               {(["checklist", "comments", "activity", "links"] as const).map(t => (
                 <button
                   key={t}
                   onClick={() => setTab(t)}
                   className={cn(
-                    "flex items-center gap-1.5 text-xs px-3 py-1.5 border-b-2 transition-colors -mb-px shrink-0",
+                    "flex items-center justify-center gap-1 text-xs px-1 py-2 border-b-2 transition-colors -mb-px min-w-0",
                     tab === t ? "border-primary text-foreground font-medium" : "border-transparent text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  {t === "checklist" && <><CheckSquare className="size-3" />Checklist {checklist.length > 0 && `(${checklistDone}/${checklist.length})`}</>}
-                  {t === "comments" && <><MessageSquare className="size-3" />Comentários {comments.length > 0 && `(${comments.length})`}</>}
-                  {t === "activity" && <><Activity className="size-3" />Atividade</>}
-                  {t === "links" && <><Link2 className="size-3" />Links {task.links.length > 0 && `(${task.links.length})`}</>}
+                  {t === "checklist" && <>
+                    <CheckSquare className="size-3.5 shrink-0" />
+                    <span className="hidden sm:inline truncate">Checklist</span>
+                    {checklist.length > 0 && <span className="shrink-0">{checklistDone}/{checklist.length}</span>}
+                  </>}
+                  {t === "comments" && <>
+                    <MessageSquare className="size-3.5 shrink-0" />
+                    <span className="hidden sm:inline truncate">Comentários</span>
+                    {comments.length > 0 && <span className="shrink-0">{comments.length}</span>}
+                  </>}
+                  {t === "activity" && <>
+                    <Activity className="size-3.5 shrink-0" />
+                    <span className="hidden sm:inline truncate">Atividade</span>
+                  </>}
+                  {t === "links" && <>
+                    <Link2 className="size-3.5 shrink-0" />
+                    <span className="hidden sm:inline truncate">Links</span>
+                    {task.links.length > 0 && <span className="shrink-0">{task.links.length}</span>}
+                  </>}
                 </button>
               ))}
             </div>
