@@ -17,8 +17,8 @@ export function NotificationBell() {
           <Bell className="size-4" />
           {notifications.length > 0 && (
             <Badge
-              variant="destructive"
-              className="absolute -top-1 -right-1 size-4 p-0 flex items-center justify-center text-[9px] rounded-full"
+              className="absolute -top-1 -right-1 size-4 p-0 flex items-center justify-center text-[9px] rounded-full border-0 text-white"
+              style={{ background: "var(--brand-orange)" }}
             >
               {notifications.length > 9 ? "9+" : notifications.length}
             </Badge>

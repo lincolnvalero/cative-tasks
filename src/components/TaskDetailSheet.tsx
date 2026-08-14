@@ -157,7 +157,7 @@ function TaskDetailContent({ task, onClose }: { task: Task; onClose: () => void 
   return (
     <>
       {/* Header — pr-12 garante espaço para o X automático do Sheet */}
-      <div className="flex items-center gap-2 flex-wrap px-5 py-3 pr-12 border-b shrink-0">
+      <div className="flex items-center gap-2 flex-wrap px-5 py-2 pr-12 border-b shrink-0">
         <Badge variant="outline" className={cn("text-xs", statusCfg.color, statusCfg.bg)}>
           {statusCfg.label}
         </Badge>
@@ -174,15 +174,15 @@ function TaskDetailContent({ task, onClose }: { task: Task; onClose: () => void 
       </div>
 
       {/* Action buttons */}
-      <div className="flex items-center gap-1 px-5 py-2 border-b shrink-0">
+      <div className="flex items-center gap-1 px-5 py-1.5 border-b shrink-0">
         <Button variant="ghost" size="sm" className="h-7 text-xs gap-1" onClick={handleDuplicate} title="Duplicar tarefa">
           <Copy className="size-3.5" />
           <span className="hidden sm:inline">Copiar</span>
         </Button>
       </div>
 
-      <ScrollArea className="flex-1">
-        <div className="flex flex-col gap-5 px-5 py-4">
+      <ScrollArea className="flex-1 min-h-0">
+        <div className="flex flex-col gap-3.5 px-5 py-3">
 
           {/* Title + lixeira na mesma linha */}
           <div className="flex items-start gap-2">
@@ -199,11 +199,11 @@ function TaskDetailContent({ task, onClose }: { task: Task; onClose: () => void 
           </Button>
           </div>
 
-          {/* Properties — vertical list, sem truncamento */}
-          <div className="rounded-lg border divide-y text-sm">
-            <PropRow label="Status">
+          {/* Properties — grid compacto 2 colunas, pra sobrar espaço pros tabs de baixo */}
+          <div className="grid grid-cols-2 gap-x-3 gap-y-2 rounded-lg border p-2.5 text-sm">
+            <CompactProp label="Status">
               <Select value={task.status} onValueChange={v => handleStatusChange(v as Status)}>
-                <SelectTrigger className="h-8 text-xs border-0 shadow-none bg-transparent focus:ring-0 w-full justify-start gap-2">
+                <SelectTrigger className="h-7 text-xs border-0 shadow-none bg-transparent focus:ring-0 w-full justify-start gap-1.5 px-1.5">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -212,11 +212,11 @@ function TaskDetailContent({ task, onClose }: { task: Task; onClose: () => void 
                   ))}
                 </SelectContent>
               </Select>
-            </PropRow>
+            </CompactProp>
 
-            <PropRow label="Prioridade">
+            <CompactProp label="Prioridade">
               <Select value={task.priority} onValueChange={v => handlePriorityChange(v as Priority)}>
-                <SelectTrigger className="h-8 text-xs border-0 shadow-none bg-transparent focus:ring-0 w-full justify-start gap-2">
+                <SelectTrigger className="h-7 text-xs border-0 shadow-none bg-transparent focus:ring-0 w-full justify-start gap-1.5 px-1.5">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -225,11 +225,11 @@ function TaskDetailContent({ task, onClose }: { task: Task; onClose: () => void 
                   ))}
                 </SelectContent>
               </Select>
-            </PropRow>
+            </CompactProp>
 
-            <PropRow label="Projeto">
+            <CompactProp label="Projeto">
               <Select value={task.projectId} onValueChange={handleProjectChange}>
-                <SelectTrigger className="h-8 text-xs border-0 shadow-none bg-transparent focus:ring-0 w-full justify-start gap-2">
+                <SelectTrigger className="h-7 text-xs border-0 shadow-none bg-transparent focus:ring-0 w-full justify-start gap-1.5 px-1.5">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -243,20 +243,20 @@ function TaskDetailContent({ task, onClose }: { task: Task; onClose: () => void 
                   ))}
                 </SelectContent>
               </Select>
-            </PropRow>
+            </CompactProp>
 
-            <PropRow label="Entrega">
+            <CompactProp label="Entrega">
               <input
                 type="date"
-                className="h-8 text-xs bg-transparent outline-none w-full px-1"
+                className="h-7 text-xs bg-transparent outline-none w-full px-1.5"
                 value={task.dueDate ?? ""}
                 onChange={e => handleDueDateChange(e.target.value)}
               />
-            </PropRow>
+            </CompactProp>
 
-            <PropRow label="Recorrência">
+            <CompactProp label="Recorrência">
               <Select value={task.recurring ?? "none"} onValueChange={handleRecurringChange}>
-                <SelectTrigger className="h-8 text-xs border-0 shadow-none bg-transparent focus:ring-0 w-full justify-start gap-2">
+                <SelectTrigger className="h-7 text-xs border-0 shadow-none bg-transparent focus:ring-0 w-full justify-start gap-1.5 px-1.5">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -268,40 +268,38 @@ function TaskDetailContent({ task, onClose }: { task: Task; onClose: () => void 
                   ))}
                 </SelectContent>
               </Select>
-            </PropRow>
+            </CompactProp>
 
-            <PropRow label="Responsável">
-              <div className="flex items-center gap-1 w-full">
-                <Select
-                  value={task.assignee ?? "none"}
-                  onValueChange={v => updateTask(task.id, { assignee: v === "none" ? null : v }, `Responsável: ${v === "none" ? "Ninguém" : v}`)}
-                >
-                  <SelectTrigger className="h-8 text-xs border-0 shadow-none bg-transparent focus:ring-0 flex-1 justify-start gap-2">
-                    <SelectValue>
-                      {task.assignee ? (
-                        <span className="flex items-center gap-1.5">
-                          <MemberAvatar member={members.find(m => m.name === task.assignee)!} size="xs" />
-                          {task.assignee}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">Ninguém</span>
-                      )}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none" className="text-xs">Ninguém</SelectItem>
-                    {members.map(m => (
-                      <SelectItem key={m.id} value={m.name} className="text-xs">
-                        <span className="flex items-center gap-2">
-                          <MemberAvatar member={m} size="xs" />
-                          {m.name}
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </PropRow>
+            <CompactProp label="Responsável">
+              <Select
+                value={task.assignee ?? "none"}
+                onValueChange={v => updateTask(task.id, { assignee: v === "none" ? null : v }, `Responsável: ${v === "none" ? "Ninguém" : v}`)}
+              >
+                <SelectTrigger className="h-7 text-xs border-0 shadow-none bg-transparent focus:ring-0 w-full justify-start gap-1.5 px-1.5">
+                  <SelectValue>
+                    {task.assignee ? (
+                      <span className="flex items-center gap-1.5">
+                        <MemberAvatar member={members.find(m => m.name === task.assignee)!} size="xs" />
+                        {task.assignee}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">Ninguém</span>
+                    )}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none" className="text-xs">Ninguém</SelectItem>
+                  {members.map(m => (
+                    <SelectItem key={m.id} value={m.name} className="text-xs">
+                      <span className="flex items-center gap-2">
+                        <MemberAvatar member={m} size="xs" />
+                        {m.name}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </CompactProp>
           </div>
 
           {task.tags.length > 0 && (
@@ -316,7 +314,7 @@ function TaskDetailContent({ task, onClose }: { task: Task; onClose: () => void 
             <label className="text-xs font-medium text-muted-foreground">Descrição</label>
             <Textarea
               placeholder="Adicione uma descrição..."
-              rows={3}
+              rows={2}
               value={description}
               onChange={e => setDescription(e.target.value)}
               onBlur={saveDescription}
@@ -502,12 +500,12 @@ function TaskDetailContent({ task, onClose }: { task: Task; onClose: () => void 
   )
 }
 
-// Layout limpo: label fixo à esquerda, valor ocupa o restante sem truncar
-function PropRow({ label, children }: { label: string; children: React.ReactNode }) {
+// Célula compacta do grid de propriedades: label pequeno em cima, controle embaixo
+function CompactProp({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center min-h-[36px] px-3">
-      <span className="text-xs text-muted-foreground w-24 shrink-0 font-medium">{label}</span>
-      <div className="flex-1 min-w-0">{children}</div>
+    <div className="flex flex-col gap-0.5 min-w-0">
+      <span className="text-[10px] uppercase tracking-wide text-muted-foreground/70 font-medium px-1.5">{label}</span>
+      {children}
     </div>
   )
 }

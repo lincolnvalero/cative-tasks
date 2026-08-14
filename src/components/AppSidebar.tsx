@@ -57,7 +57,10 @@ export function AppSidebar({ page, onNavigate, isAdmin }: Props) {
               <p className="text-xs text-muted-foreground">Gestão de Projetos</p>
             </div>
           </div>
-
+          <div
+            className="h-[3px] rounded-full group-data-[collapsible=icon]:hidden"
+            style={{ background: "linear-gradient(90deg, var(--brand-blue) 0%, var(--brand-orange) 100%)" }}
+          />
         </div>
       </SidebarHeader>
 

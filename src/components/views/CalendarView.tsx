@@ -98,12 +98,12 @@ export function CalendarView({ onOpenTask }: CalendarViewProps) {
                       const status = STATUS_CONFIG[task.status]
                       const hasNote = notes.some(n => n.taskId === task.id)
                       return (
-                        <div key={task.id} className="flex items-center gap-0.5">
+                        <div key={task.id} className="relative group/task">
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <button
                                 className={cn(
-                                  "flex-1 min-w-0 text-left text-xs px-1.5 py-0.5 rounded transition-opacity hover:opacity-80 leading-snug truncate",
+                                  "w-full text-left text-xs px-1.5 py-0.5 rounded transition-opacity hover:opacity-80 leading-snug truncate block",
                                   status.bg, status.color
                                 )}
                                 onClick={() => onOpenTask(task)}
@@ -116,23 +116,35 @@ export function CalendarView({ onOpenTask }: CalendarViewProps) {
                               <div className="text-muted-foreground">{status.label}</div>
                             </TooltipContent>
                           </Tooltip>
-                          {hasNote && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span className="shrink-0 text-amber-500 flex items-center">
-                                  <StickyNote className="size-3" />
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent side="right" className="text-xs">Tem nota vinculada</TooltipContent>
-                            </Tooltip>
-                          )}
-                          <button
-                            onClick={e => { e.stopPropagation(); setFilesTask(task) }}
-                            className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
-                            title="Anexar arquivo"
+
+                          {/* Ícones de nota/anexo — aparecem só ao passar o mouse na tarefa,
+                              como overlay (não ocupam espaço extra na linha, então não somem
+                              em dias com célula estreita) */}
+                          <div
+                            className={cn(
+                              "absolute right-0 top-0 bottom-0 flex items-center gap-1 pl-2 pr-1 rounded-r",
+                              "opacity-0 group-hover/task:opacity-100 transition-opacity pointer-events-none group-hover/task:pointer-events-auto",
+                              status.bg
+                            )}
                           >
-                            <Paperclip className="size-3" />
-                          </button>
+                            {hasNote && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="shrink-0 text-amber-600 flex items-center">
+                                    <StickyNote className="size-3" />
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent side="right" className="text-xs">Tem nota vinculada</TooltipContent>
+                              </Tooltip>
+                            )}
+                            <button
+                              onClick={e => { e.stopPropagation(); setFilesTask(task) }}
+                              className="shrink-0 hover:scale-110 transition-transform"
+                              title="Anexar arquivo"
+                            >
+                              <Paperclip className="size-3" />
+                            </button>
+                          </div>
                         </div>
                       )
                     })}
