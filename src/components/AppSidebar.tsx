@@ -6,7 +6,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { useApp } from "@/context/AppContext"
 import type { Status } from "@/types/task"
-import { LayoutDashboard, CheckSquare, FolderKanban, StickyNote, User, Building2, LayoutList, ChevronLeft, ChevronRight, Users, Settings, MicVocal, Inbox } from "lucide-react"
+import { LayoutDashboard, CheckSquare, FolderKanban, StickyNote, User, Building2, LayoutList, ChevronLeft, ChevronRight, Users, Settings, MicVocal, Inbox, CalendarDays } from "lucide-react"
 import { ProjectIcon } from "@/components/ProjectIcon"
 
 function CollapseButton() {
@@ -22,7 +22,7 @@ function CollapseButton() {
   )
 }
 
-type Page = "dashboard" | "tasks" | "projects" | "notes" | "users" | "settings" | "singing" | "inbox"
+type Page = "dashboard" | "tasks" | "projects" | "notes" | "calendar" | "users" | "settings" | "singing" | "inbox"
 
 interface Props {
   page: Page
@@ -67,11 +67,11 @@ export function AppSidebar({ page, onNavigate, isAdmin }: Props) {
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton
-                isActive={page === "dashboard"}
-                onClick={() => { onNavigate("dashboard"); setActiveProjectId(null) }}
+                isActive={page === "calendar"}
+                onClick={() => { onNavigate("calendar"); setActiveProjectId(null) }}
               >
-                <LayoutDashboard />
-                <span>Dashboard</span>
+                <CalendarDays />
+                <span>Calendário</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
@@ -104,6 +104,15 @@ export function AppSidebar({ page, onNavigate, isAdmin }: Props) {
               >
                 <StickyNote />
                 <span>Notas</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                isActive={page === "dashboard"}
+                onClick={() => { onNavigate("dashboard"); setActiveProjectId(null) }}
+              >
+                <LayoutDashboard />
+                <span>Dashboard</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
             {isAdmin && (

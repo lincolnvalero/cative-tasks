@@ -3,13 +3,12 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { KanbanView } from "@/components/views/KanbanView"
 import { ListView } from "@/components/views/ListView"
-import { CalendarView } from "@/components/views/CalendarView"
 import { WorkloadView } from "@/components/views/WorkloadView"
 import { TaskDialog } from "@/components/TaskDialog"
 import { ShortcutsDialog } from "@/components/ShortcutsDialog"
 import { useApp } from "@/context/AppContext"
 import type { Task } from "@/types/task"
-import { Plus, Kanban, List, CalendarDays, BarChart3, ChevronDown, FolderKanban, Users, Clock, CalendarClock, RotateCcw, SlidersHorizontal } from "lucide-react"
+import { Plus, Kanban, List, BarChart3, ChevronDown, FolderKanban, Users, Clock, CalendarClock, RotateCcw, SlidersHorizontal } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuCheckboxItem, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { MemberAvatar } from "@/components/MemberAvatar"
 import { ProjectIcon } from "@/components/ProjectIcon"
@@ -32,9 +31,10 @@ export function TasksPage({ onOpenTask, newTaskOpen = false, onNewTaskClose }: P
   const [assigneeFilter, setAssigneeFilter] = useState<string[]>([])
   const [dueDateFilter, setDueDateFilter] = useState<DueDateFilter>(null)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState<"kanban" | "list" | "calendar" | "workload">(
-    () => (localStorage.getItem("lincoln-active-tab") as "kanban" | "list" | "calendar" | "workload") || "kanban"
-  )
+  const [activeTab, setActiveTab] = useState<"kanban" | "list" | "workload">(() => {
+    const stored = localStorage.getItem("lincoln-active-tab")
+    return stored === "kanban" || stored === "list" || stored === "workload" ? stored : "kanban"
+  })
 
   const noDueDateCount = tasks.filter(t => !t.dueDate && t.status !== "done").length
   const overdueCount = tasks.filter(t =>
@@ -70,7 +70,7 @@ export function TasksPage({ onOpenTask, newTaskOpen = false, onNewTaskClose }: P
   }
 
   function handleTabChange(tab: string) {
-    if (tab === "kanban" || tab === "list" || tab === "calendar" || tab === "workload") {
+    if (tab === "kanban" || tab === "list" || tab === "workload") {
       setActiveTab(tab)
       localStorage.setItem("lincoln-active-tab", tab)
     }
@@ -283,11 +283,6 @@ export function TasksPage({ onOpenTask, newTaskOpen = false, onNewTaskClose }: P
               <List className="size-3.5" />
               Lista
             </TabsTrigger>
-            <TabsTrigger value="calendar" className="gap-1.5 text-xs sm:text-sm">
-              <CalendarDays className="size-3.5" />
-              <span className="hidden sm:inline">Calendário</span>
-              <span className="sm:hidden">Cal.</span>
-            </TabsTrigger>
             <TabsTrigger value="workload" className="gap-1.5 text-xs sm:text-sm">
               <BarChart3 className="size-3.5" />
               <span className="hidden sm:inline">Carga</span>
@@ -312,10 +307,6 @@ export function TasksPage({ onOpenTask, newTaskOpen = false, onNewTaskClose }: P
 
         <TabsContent value="list">
           <ListView onOpenTask={onOpenTask} todayFilter={todayFilter} noDueDateFilter={noDueDateFilter} assigneeFilter={assigneeFilter} dueDateFilter={dueDateFilter} />
-        </TabsContent>
-
-        <TabsContent value="calendar" style={{ height: "calc(100vh - 240px)" }}>
-          <CalendarView onOpenTask={onOpenTask} />
         </TabsContent>
 
         <TabsContent value="workload">

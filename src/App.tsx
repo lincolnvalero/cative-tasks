@@ -8,6 +8,7 @@ import { DashboardPage } from "@/pages/DashboardPage"
 import { TasksPage } from "@/pages/TasksPage"
 import { ProjectsPage } from "@/pages/ProjectsPage"
 import { NotesPage } from "@/pages/NotesPage"
+import { CalendarPage } from "@/pages/CalendarPage"
 import { UsersPage } from "@/pages/UsersPage"
 import { SettingsPage } from "@/pages/SettingsPage"
 import { SingingPage } from "@/pages/SingingPage"
@@ -29,7 +30,7 @@ import { Sun, Moon, Monitor, Search, Loader2, Bot, User, ChevronsUpDown, LogOut 
 import type { Task } from "@/types/task"
 import { isToday, parseISO } from "date-fns"
 
-type Page = "dashboard" | "tasks" | "projects" | "notes" | "users" | "settings" | "singing" | "inbox"
+type Page = "dashboard" | "tasks" | "projects" | "notes" | "calendar" | "users" | "settings" | "singing" | "inbox"
 
 function ThemeToggle() {
   const { theme, setTheme } = useTheme()
@@ -78,7 +79,7 @@ function AppInner() {
   const [newTaskOpen, setNewTaskOpen] = useState(false)
   const [jarvisOpen, setJarvisOpen] = useState(false)
 
-  const PAGE_LABELS: Record<Page, string> = { dashboard: "Dashboard", tasks: "Tarefas", projects: "Projetos", notes: "Notas", users: "Usuários", settings: "Configurações", singing: "Canto", inbox: "Inbox" }
+  const PAGE_LABELS: Record<Page, string> = { dashboard: "Dashboard", tasks: "Tarefas", projects: "Projetos", notes: "Notas", calendar: "Calendário", users: "Usuários", settings: "Configurações", singing: "Canto", inbox: "Inbox" }
 
   // Sai de uma página restrita a admin se a identidade atual deixar de ser admin
   useEffect(() => {
@@ -154,6 +155,7 @@ function AppInner() {
           )}
           {!loading && page === "projects" && <ProjectsPage />}
           {!loading && page === "notes" && <NotesPage />}
+          {!loading && page === "calendar" && <CalendarPage onOpenTask={setDetailTask} />}
           {!loading && page === "users" && <UsersPage />}
           {!loading && page === "settings" && <SettingsPage />}
           {!loading && page === "singing" && <SingingPage />}
