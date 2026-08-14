@@ -11,6 +11,11 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+}
+
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 
@@ -28,8 +33,11 @@ const MEMBER_COLORS = [
 ]
 
 Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders })
+  }
   if (req.method !== "POST") {
-    return new Response("Method not allowed", { status: 405 })
+    return new Response("Method not allowed", { status: 405, headers: corsHeaders })
   }
 
   try {
@@ -39,20 +47,20 @@ Deno.serve(async (req) => {
     })
     const { data: { user: caller } } = await callerClient.auth.getUser()
     if (!caller) {
-      return new Response(JSON.stringify({ error: "Não autenticado" }), { status: 401 })
+      return new Response(JSON.stringify({ error: "Não autenticado" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } })
     }
 
     const { data: callerProfile } = await adminClient
       .from("profiles").select("is_admin").eq("id", caller.id).single()
     if (!callerProfile?.is_admin) {
-      return new Response(JSON.stringify({ error: "Só administradores podem criar contas" }), { status: 403 })
+      return new Response(JSON.stringify({ error: "Só administradores podem criar contas" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } })
     }
 
     const { email, name, password, isAdmin } = await req.json() as {
       email: string; name: string; password: string; isAdmin?: boolean
     }
     if (!email?.trim() || !name?.trim() || !password || password.length < 6) {
-      return new Response(JSON.stringify({ error: "Preencha e-mail, nome e uma senha com 6+ caracteres" }), { status: 400 })
+      return new Response(JSON.stringify({ error: "Preencha e-mail, nome e uma senha com 6+ caracteres" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } })
     }
 
     const { data: created, error: createError } = await adminClient.auth.admin.createUser({
@@ -61,7 +69,7 @@ Deno.serve(async (req) => {
       email_confirm: true,
     })
     if (createError || !created.user) {
-      return new Response(JSON.stringify({ error: createError?.message ?? "Erro ao criar conta" }), { status: 400 })
+      return new Response(JSON.stringify({ error: createError?.message ?? "Erro ao criar conta" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } })
     }
 
     const { data: profileRow, error: profileError } = await adminClient.from("profiles").insert({
@@ -75,14 +83,14 @@ Deno.serve(async (req) => {
 
     if (profileError || !profileRow) {
       await adminClient.auth.admin.deleteUser(created.user.id)
-      return new Response(JSON.stringify({ error: "Erro ao criar perfil" }), { status: 500 })
+      return new Response(JSON.stringify({ error: "Erro ao criar perfil" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } })
     }
 
     return new Response(JSON.stringify({ profile: profileRow }), {
-      headers: { "Content-Type": "application/json" },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     })
   } catch (err) {
     console.error("Erro:", err)
-    return new Response(JSON.stringify({ error: "Internal error" }), { status: 500 })
+    return new Response(JSON.stringify({ error: "Internal error" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } })
   }
 })
