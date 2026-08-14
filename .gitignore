@@ -29,3 +29,6 @@ dist-ssr
 
 # Local Netlify CLI state (site link cache, not project source)
 .netlify
+
+# Local Supabase CLI state (project link cache, not project source)
+supabase/.temp
